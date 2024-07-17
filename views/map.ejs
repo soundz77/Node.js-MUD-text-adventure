@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Map</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .room {
+        float: left;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 10px;
+        width: 250px;
+        height: 300px;
+      }
+      .title {
+        font-weight: bold;
+      }
+      .connections {
+        margin-top: 10px;
+      }
+      .connection-item {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Game Map</h1>
+
+    <% rooms.forEach(function(room) { %>
+    <div class="room">
+      <div class="title">Room: <%= room.name %></div>
+      <div>Description: <%= room.description %></div>
+      <div>Exits: <%= room.exits %></div>
+      <div>Creatures: <%= room.creatures %></div>
+      <div>Artifacts: <%= room.artifacts %></div>
+      <div class="connections">
+        <div class="title">Connections:</div>
+        <% room.connections.forEach(function(connection) { %>
+        <div class="connection-item">
+          Direction: <%= connection.direction %>, Room: <%= connection.room %>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+    <% }); %>
+  </body>
+</html>

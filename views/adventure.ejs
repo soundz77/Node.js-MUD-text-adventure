@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adventure</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="navbar">
+        <h1>Welcome <%= player.name %>!</h1>
+        <p>
+          A level <span id="level"><%= player.stats.level %> </span> <%=
+          player.class %>. Good luck on your journey!
+        </p>
+      </div>
+      <div class="content">
+        <div class="left-sidebar">
+          <h2>Player Stats</h2>
+          <div class="stats">
+            <h3>Basic stats</h3>
+            <div class="stat">
+              <span class="stat-label">Health:</span>
+              <div class="stat-bar">
+                <div
+                  class="stat-bar-inner"
+                  id="health-bar"
+                  style="width: <%= player.stats.health %>%"
+                ></div>
+              </div>
+              <span id="health"><%= player.stats.health %></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Stamina:</span>
+              <div class="stat-bar">
+                <div
+                  class="stat-bar-inner"
+                  id="stamina-bar"
+                  style="width: <%= player.stats.stamina %>%"
+                ></div>
+              </div>
+              <span id="stamina"><%= player.stats.stamina %></span>
+            </div>
+            <h3>Primary stats</h3>
+            <div class="stat">
+              <span class="stat-label">Strength:</span>
+              <div class="stat-bar">
+                <div
+                  class="stat-bar-inner"
+                  id="strength-bar"
+                  style="width: <%= player.stats.strength %>%"
+                ></div>
+              </div>
+              <span id="strength"><%= player.stats.strength %></span>
+            </div>
+            <h3>Secondary stats</h3>
+            <div class="stat">
+              <span class="stat-label">Defence:</span>
+              <div class="stat-bar">
+                <div
+                  class="stat-bar-inner"
+                  id="defence-bar"
+                  style="width: <%= player.stats.defence %>%"
+                ></div>
+              </div>
+              <span id="defence"><%= player.stats.defence %></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Attack:</span>
+              <div class="stat-bar">
+                <div
+                  class="stat-bar-inner"
+                  id="attack-bar"
+                  style="width: <%= player.stats.attack %>%"
+                ></div>
+              </div>
+              <span id="attack"><%= player.stats.attack %></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Experience:</span>
+              <div class="stat-bar">
+                <div
+                  class="stat-bar-inner"
+                  id="experience-bar"
+                  style="width: <%= player.stats.experience %>%"
+                ></div>
+              </div>
+              <span id="experience"><%= player.stats.experience %></span>
+            </div>
+          </div>
+          <h2 id="inventory-list">
+            <% if (player.inventory) { %>Your inventory: <%= player.inventory
+            %><% } %>
+          </h2>
+        </div>
+        <div class="main-content">
+          <div class="left-column">
+            <p>You are here:</p>
+            <h2 id="location">
+              <% if (location && location.description) { %><%=
+              location.description %><% } %>
+            </h2>
+            <h2 id="locationExits">
+              <% if (location && location.exits) { %>Exits: <%= location.exits
+              %><% } %>
+            </h2>
+            <h2 id="creatures">
+              <% if (location && location.creatures && location.creatures.length
+              > 0) { %>Monsters: <%= location.creatures %><% } %>
+            </h2>
+            <h2 id="artifacts">
+              <% if (location && location.artifacts && location.artifacts.length
+              > 0) { %>Artifacts: <%= location.artifacts %><% } %>
+            </h2>
+            <form id="command-form">
+              <label for="command">Enter command:</label>
+              <input type="text" id="command" name="command" required />
+              <button type="submit">Submit</button>
+            </form>
+            <div>
+              <h2 id="message-list"></h2>
+            </div>
+          </div>
+          <div class="right-column">
+            <div id="chat">
+              <h3>Chat</h3>
+              <ul id="messages"></ul>
+              <form id="chat-form">
+                <input id="message" autocomplete="off" />
+                <button>Send</button>
+              </form>
+            </div>
+            <div>
+              <h2>Kills:</h2>
+              <div id="kills"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Socket.IO library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      socket.on("connect", () => {
+        console.log("Connected to server");
+      });
+
+      const form = document.getElementById("command-form");
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const commandInput = document.getElementById("command").value;
+        socket.emit("processCommand", commandInput);
+        document.getElementById("command").value = "";
+        console.log("emitted command: " + commandInput);
+      });
+
+      socket.on("update", (payload) => {
+        const { player, location } = payload;
+        console.log("Received update:", payload);
+
+        // Display the command result message
+        if (location && location.result) {
+          document.getElementById("message-list").textContent = location.result;
+        }
+
+        // Workaround: Attacks are returned under "message" - should be result
+        if (location && location.message) {
+          document.getElementById("message-list").textContent =
+            location.message;
+        }
+
+        // Apply the updates
+        if (location) {
+          if (location.description) {
+            document.getElementById("location").textContent =
+              location.description;
+          }
+          if (location.exits) {
+            document.getElementById("locationExits").textContent =
+              "Exits: " + location.exits;
+          }
+          if (location.creatures) {
+            document.getElementById("creatures").textContent =
+              "Monsters: " + location.creatures;
+          } else {
+            document.getElementById("creatures").textContent = "";
+          }
+          if (location.artifacts) {
+            document.getElementById("artifacts").textContent =
+              "Artifacts: " + location.artifacts;
+          } else {
+            document.getElementById("artifacts").textContent = "";
+          }
+        }
+
+        // Apply updates for the current player only
+        if (player && player.stats) {
+          // Update player stats
+          if (player.stats.health) {
+            if (player.stats.health < 0) {
+              player.stats.health = 0;
+            }
+            document.getElementById("health").textContent = player.stats.health;
+            document.getElementById("health-bar").style.width =
+              player.stats.health + "%";
+          }
+          if (player.stats.stamina) {
+            document.getElementById("stamina").textContent =
+              player.stats.stamina;
+            document.getElementById("stamina-bar").style.width =
+              player.stats.stamina + "%";
+          }
+          if (player.stats.strength) {
+            document.getElementById("strength").textContent =
+              player.stats.strength;
+            document.getElementById("strength-bar").style.width =
+              player.stats.strength + "%";
+          }
+          if (player.stats.defence) {
+            document.getElementById("defence").textContent =
+              player.stats.defence;
+            document.getElementById("defence-bar").style.width =
+              player.stats.defence + "%";
+          }
+          if (player.stats.attack) {
+            document.getElementById("attack").textContent = player.stats.attack;
+            document.getElementById("attack-bar").style.width =
+              player.stats.attack + "%";
+          }
+          if (player.stats.experience) {
+            document.getElementById("experience").textContent =
+              player.stats.experience;
+            document.getElementById("experience-bar").style.width =
+              player.stats.experience + "%";
+          }
+          if (player.stats.kills) {
+            document.getElementById("kills").textContent = player.stats.kills;
+          }
+          if (player.stats.level) {
+            document.getElementById("level").textContent = player.stats.level;
+          }
+          // Update inventory
+          const inventoryList = document.getElementById("inventory-list");
+          if (player.inventory) {
+            inventoryList.innerHTML = "Your inventory: " + player.inventory;
+          }
+        }
+      });
+
+      // Chat form emitter
+      const chatForm = document.getElementById("chat-form");
+      chatForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const playerName = "<%= player.name %>";
+        const message =
+          playerName + ": " + document.getElementById("message").value;
+        socket.emit("chatMessage", message);
+        document.getElementById("message").value = "";
+      });
+
+      // Receive chat events from server
+      socket.on("chatMessage", function (msg) {
+        const item = document.createElement("li");
+        item.textContent = msg;
+        document.getElementById("messages").appendChild(item);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adventure</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="navbar">
+         <h1>Text Adventure</h1>
+    <p>
+      Welcome to the Text Adventure game! Explore, fight monsters, and collect
+      artifacts to become the ultimate adventurer.
+    </p>
+      </div>
+      <div class="content">
+        <div class="left-sidebar">
+          <h2>Available Commands:</h2>
+    <ul>
+      <li>
+        <strong>go [direction]</strong>: Move in a specific direction (north,
+        south, east, west).
+      </li>
+       <strong>n,s,e,w </strong>: Move in a specific direction (north,
+        south, east, west).
+      </li>
+      <li><strong>look (l)</strong>: Get a description of the current room.</li>
+      <li>
+        <strong>attack (a) [monster name]</strong>: Attack a monster in the room.
+      </li>
+      <li><strong>health (h)</strong>: View your current status.</li>
+      <li>
+        <strong>take [artifact name]</strong>: Pick up an artifact in the room.
+      </li>
+      <li>
+        <strong>put [artifact name]</strong>: Drop an artifact from your
+        inventory.
+      </li>
+      <li>
+        <strong>inventory (i)</strong>: View the contents of your inventory.
+      </li>
+      <li>
+        <strong>examine (x) [target name]</strong>: Examine a target in the room
+        (monster or artifact).
+      </li>
+    </ul>
+          
+            </div>
+        <div class="main-content">
+          <div class="left-column">
+         <form action="/adventure" method="POST">
+      <label for="playerName">Enter your name:</label>
+      <input type="text" id="playerName" name="playerName" required />
+      <label for="playerClass">Choose your class:</label>
+      <select id="playerClass" name="playerClass" required>
+        <option value="archer">Archer</option>
+        <option value="assassin">Assassin</option>
+        <!-- Add more class options here -->
+      </select>
+      <button type="submit">Start Game</button>
+    </form>
+          </div>
+          <div class="right-column">
+          
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Socket.IO librry -->
+
+
+  </body>
+</html>
