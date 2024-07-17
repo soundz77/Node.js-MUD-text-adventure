@@ -1,6 +1,6 @@
 # The beginnings of a Multi User Dungeon\*
 
-(A multiplayer, text-based adventure game).
+*(A multiplayer, text-based adventure game).
 
 ## Setup
 
