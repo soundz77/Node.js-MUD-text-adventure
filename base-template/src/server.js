@@ -6,13 +6,14 @@ import logger from "./utils/logging/logger.js";
 import serverMessages from "./utils/logging/messages/serverMessages.js";
 import asyncMessages from "./utils/logging/messages/asyncMessages.js";
 import checkVarsSet from "./utils/validation/checkVarsSet.js";
+import { io } from "../../src/config/socketConfig.js";
 
 let server;
 
 const checkRequiredVars = () => {
   const varsSet = checkVarsSet({
     serverMessages,
-    asyncMessages,
+    asyncMessages
   });
 
   if (!varsSet) {
@@ -38,7 +39,7 @@ const handleServerError = (err) => {
     EADDRINUSE: () => {
       logger.error(`${bind} ${serverMessages.errors.inUse}`);
       process.exit(1);
-    },
+    }
   };
 
   if (errorActions[err.code]) {
@@ -50,6 +51,7 @@ const handleServerError = (err) => {
 };
 
 const handleShutdown = () => {
+  io.close(() => console.log("Socket server closed"));
   logger.info(serverMessages.success.shutdown);
   server.close(() => {
     logger.info(serverMessages.success.shutdown);
