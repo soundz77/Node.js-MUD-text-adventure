@@ -1,12 +1,14 @@
 import AppError from "../../../base-template/src/utils/errors/AppError.js";
-
-import gameData from "../gameData/game1.js";
+import { artifactBlueprints } from "../gameData/gameData.js";
+import { createArtifactFromBlueprint } from "../gameData/factories.js";
 
 const addRandomArtifactToCreature = (creature) => {
   try {
-    const { artifactTypes } = gameData;
-    const artifact =
-      artifactTypes[Math.floor(Math.random() * artifactTypes.length)];
+    // pick a blueprint, then instantiate
+    const bp =
+      artifactBlueprints[(Math.random() * artifactBlueprints.length) | 0];
+    const artifact = createArtifactFromBlueprint(bp);
+
     creature.addArtifact(artifact);
 
     console.log(`Gave ${artifact.name} to creature: ${creature.name}`);

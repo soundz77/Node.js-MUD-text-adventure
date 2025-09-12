@@ -1,5 +1,5 @@
 import AppError from "../../../base-template/src/utils/errors/AppError.js";
-import gameData from "../gameData/game1.js";
+import { gameData } from "../gameData/gameData.js";
 
 const connectLocationsDFS = (locations) => {
   try {

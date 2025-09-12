@@ -7,119 +7,133 @@ import putArtifact from "./put/putArtifact.js";
 import gameMessages from "../gameData/gameMessages.js";
 
 const processCommand = (game, command) => {
-  if (!command) return "";
+  // 0) Normalize input (accept string or {text})
+  const raw =
+    typeof command === "string" ? command : (command && command.text) || "";
+  const input = String(raw).trim();
 
-  let player = {
-    stats: game.player.showPlayerStats(),
-  };
-  let location = {};
+  // 1) If empty -> emit full snapshot with message and return
+  if (!input) {
+    const loc = game.getLocationData(game.player.currentLocation, game.player);
+    loc.result = gameMessages.unknownCommand;
+    game.emitCallback(loc); // emit from canonical player
+    return;
+  }
+
+  // 2) Parse
+  const [verbRaw, ...args] = input.split(/\s+/);
+  const action = (verbRaw || "").toLowerCase();
+  const params = args.join(" ").trim();
+
+  // 3) Local state buckets (DECLARE BEFORE ANY USE!)
+  let location = {}; // ← declare early to avoid TDZ
+
+  // Helper uses the outer `location` (safe now)
+  function updateLocationWithLocationData() {
+    const locData = game.getLocationData(
+      game.player.currentLocation,
+      game.player
+    );
+    location = updateLocationAndPlayer(location, locData);
+  }
 
   const commands = {
-    eat: (params) => {
-      const itemName = params.trim();
-      location.result = game.player.consumeItem(itemName);
-      player = {
-        ...player,
-        stats: game.player.showPlayerStats(),
-        inventory: game.player.showInventory(),
-      };
+    eat: (p) => {
+      const item = (p || "").trim();
+      location.result = game.player.consumeItem(item);
+      updateLocationWithLocationData();
     },
-    equip: (params) => {
-      const itemName = params.trim(); // Ensure params is a string and trimmed
-      location.result = equip(game, itemName);
-      player = {
-        ...player,
-        stats: game.player.showPlayerStats(),
-        inventory: game.player.showInventory(),
-      };
+    equip: (p) => {
+      const item = (p || "").trim();
+      location.result = equip(game, item);
+      updateLocationWithLocationData();
     },
-    use: (params) => {
-      const itemName = params.trim(); // Ensure params is a string and trimmed
-      location.result = game.player.useItem(itemName);
-      player = {
-        ...player,
-        stats: game.player.showPlayerStats(),
-        inventory: game.player.showInventory(),
-      };
+    use: (p) => {
+      const item = (p || "").trim();
+      location.result = game.player.useItem(item);
+      updateLocationWithLocationData();
     },
-    go: (params) => {
-      location.result = movePlayer(game, params.toLowerCase());
+    go: (p) => {
+      location.result = movePlayer(game, (p || "").toLowerCase());
       updateLocationWithLocationData();
     },
     look: () => {
       location.result = lookAround(game);
       updateLocationWithLocationData();
     },
-
-    attack: (params) => {
-      const attackResult = attackCreature(game, params); // rtns  { message, player }
+    attack: (p) => {
+      const res = attackCreature(game, p);
+      location.result = res?.message || "attackResult.message missing";
       updateLocationWithLocationData();
-      location.result = attackResult.message || "attackResult.message missing";
-      // update player stats
-      if (attackResult.player?.stats?.health) {
-        player.stats.health = attackResult.player.stats.health;
-      }
     },
-
     health: () => {
-      location.result = game.player.getStats();
+      // human-readable stats line into message area; UI bars update via snapshot
+      location.result = game.player.getStats?.() || "";
       updateLocationWithLocationData();
     },
-    take: (params) => {
-      location.result = game.player.takeArtifact(params);
+    take: (p) => {
+      location.result = game.player.takeArtifact(p);
       updateLocationWithLocationData();
-      player.inventory = game.player.showInventory();
     },
-    drop: (params) => {
-      const artifactName = params.trim(); // Ensure params is a string and trimmed
-      location.result = putArtifact(game.player, artifactName);
+    drop: (p) => {
+      const name = (p || "").trim();
+      location.result = putArtifact(game.player, name);
       updateLocationWithLocationData();
-      player.inventory = game.player.showInventory();
     },
     inventory: () => {
-      player.inventory = game.player.showInventory();
+      // just refresh snapshot; UI shows inventory from emitCallback payload
+      updateLocationWithLocationData();
     },
-    examine: (params) => {
-      location.result = game.player.examine(params.toLowerCase());
+    examine: (p) => {
+      const res = game.player.examine(String(p || "").toLowerCase());
+      location.result = res?.message || "";
+      // optionally attach structured payload
+      if (res && typeof res === "object") {
+        location.inspect = {
+          kind: res.kind,
+          name: res.name,
+          stats: res.stats,
+          description: res.description,
+          equipped: res.equipped,
+          condition: res.condition
+        };
+      }
+      updateLocationWithLocationData();
     },
-    // Movements
+
+    // aliases
     n: () => commands.go("north"),
     s: () => commands.go("south"),
     e: () => commands.go("east"),
     w: () => commands.go("west"),
     u: () => commands.go("up"),
     d: () => commands.go("down"),
-    // Play-based commands
     i: () => commands.inventory(),
     l: () => commands.look(),
     h: () => commands.health(),
-    x: (params) => commands.examine(params),
-    t: (params) => commands.take(params),
-    p: (params) => commands.put(params),
-    a: (params) => commands.attack(params),
-    q: (params) => commands.equip(params),
+    x: (p) => commands.examine(p),
+    t: (p) => commands.take(p),
+    p: (p) => commands.drop(p),
+    a: (p) => commands.attack(p),
+    q: (p) => commands.equip(p)
   };
 
-  const [action, ...paramsArray] = command.split(" ");
-  const params = paramsArray.join(" "); // Join params array into a single string
-  const commandFunction = commands[action];
+  const handler = commands[action];
 
-  if (commandFunction) {
-    try {
-      commandFunction(params);
-    } catch (error) {
-      location.result = `Error executing command "${action}": ${error.message}`;
+  try {
+    if (handler) {
+      handler(params);
+    } else {
+      location.result = gameMessages.unknownCommand;
+      updateLocationWithLocationData();
     }
-  } else {
-    location.result = gameMessages.unknownCommand;
+  } catch (error) {
+    location.result = `Error executing command "${action}": ${error.message}`;
     updateLocationWithLocationData();
   }
-  game.emitCallback(location, player);
 
-  function updateLocationWithLocationData() {
-    const LocationData = game.getLocationData(game.player.currentLocation);
-    location = updateLocationAndPlayer(location, LocationData);
-  }
+  // Emit from authoritative state (no draft player objects)
+  game.emitCallback(location);
 };
 
 export default processCommand;

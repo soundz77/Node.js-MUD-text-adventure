@@ -1,34 +1,37 @@
 import gameMessages from "../gameData/gameMessages.js";
-
 class Character {
   constructor(
     name,
-    health,
-    stamina,
-    strength,
-    defence,
-    attack,
-    currentLocation,
-    inventory,
-    experience,
-    level,
-    classType
+    health = 10,
+    stamina = 10,
+    strength = 10,
+    defence = 5,
+    attack = 10,
+    currentLocation = null,
+    inventory = [],
+    experience = 0,
+    level = 1,
+    classType = ""
   ) {
     this.name = name;
-    this.health = health || 10;
-    this.stamina = stamina || 10;
-    this.strength = strength || 10;
-    this.defence = defence || 5;
-    this.attack = attack || 10;
-    this.currentLocation = currentLocation || null;
-    this.inventory = inventory || [];
-    this.experience = experience || 0;
-    this.level = level || 1;
-    this.classType = classType || "";
+    this.currentLocation = currentLocation;
+    this.inventory = inventory;
+    this.classType = classType;
     this.killCount = 0;
-    this.killValue = 1; // Amount of XP gained by killed this creature
+    this.killValue = 1;
     this.equippedItems = {};
     this.isAttackable = true;
+
+    this.stats = {
+      health: Number(health ?? 10),
+      stamina: Number(stamina ?? 10),
+      strength: Number(strength ?? 10),
+      defence: Number(defence ?? 5),
+      attack: Number(attack ?? 10),
+      experience: Number(experience ?? 0),
+      level: Number(level ?? 1),
+      kills: Number(this.killCount ?? 0)
+    };
   }
 
   // Use an item from the inventory
@@ -72,20 +75,15 @@ class Character {
 
   // Provide stats in human readable format
   getStats() {
-    return `${this.health}. Stamina: ${this.stamina}. Strength: ${this.strength}. Defence: ${this.defence}. Attack: ${this.attack}. Level: ${this.level}. Experience: ${this.experience}. Kills: ${this.killCount}.`;
+    return `${this.stats.health}. Stamina: ${this.stats.stamina}. Strength: ${this.stats.strength}. Defence: ${this.stats.defence}. Attack: ${this.stats.attack}. Level: ${this.stats.level}. : ${this.stats.experience}. Kills: ${this.stats.killCount}.`;
   }
 
   // Provide stats as an object
   getStatsObj() {
     return {
-      health: this.health,
-      stamina: this.stamina,
-      strength: this.strength,
-      defence: this.defence,
-      attack: this.attack,
-      level: this.level,
-      experience: this.experience,
+      ...this.stats,
       kills: this.killCount,
+      classType: this.classType
     };
   }
 

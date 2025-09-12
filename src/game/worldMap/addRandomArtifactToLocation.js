@@ -1,12 +1,13 @@
 import AppError from "../../../base-template/src/utils/errors/AppError.js";
-
-import gameData from "../gameData/game1.js";
+import { artifactBlueprints } from "../gameData/gameData.js";
+import { createArtifactFromBlueprint } from "../gameData/factories.js";
 
 const addRandomArtifactToLocation = (location) => {
   try {
-    const { artifactTypes } = gameData;
-    const artifact =
-      artifactTypes[Math.floor(Math.random() * artifactTypes.length)];
+    const bp =
+      artifactBlueprints[(Math.random() * artifactBlueprints.length) | 0];
+    const artifact = createArtifactFromBlueprint(bp);
+
     location.addArtifact(artifact);
     console.log(`Placed ${artifact.name} in ${location.name}`);
   } catch (error) {

@@ -1,11 +1,9 @@
 import AppError from "../../../base-template/src/utils/errors/AppError.js";
 import Location from "../Locations/location.js";
-import gameData from "../gameData/game1.js";
 
 // Create the specified number of Locations
-const generateLocations = (numlocations) => {
+const generateLocations = (numlocations, locationDescriptions) => {
   try {
-    const { locationDescriptions } = gameData;
     const locations = [];
     for (let i = 0; i < numlocations; i++) {
       const randomDescription =

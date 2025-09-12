@@ -6,7 +6,8 @@ import populateLocations from "./worldMap/populateLocations.js";
 import getLocation from "./worldMap/getLocation.js";
 import processCommand from "./commands/processCommand.js";
 import { io } from "../config/socketConfig.js";
-import gameData from "./gameData/game1.js";
+import { gameData, locationDescriptions } from "./gameData/gameData.js";
+import { worldState } from "../game/world/runner.js";
 
 class Game {
   constructor() {
@@ -17,47 +18,53 @@ class Game {
 
   setup() {
     try {
-      // Config - change settings in gameData
-      const {
-        numberOfLocations,
-        numberOfCreatures,
-        numberOfArtifacts,
-        chanceCreatureInLocation,
-        chanceCreatureHasArtifact,
-        startLocation,
-      } = gameData;
+      const { counts, odds, startLocationName } = gameData;
 
-      // Generate all of the locations
-      const locations = generateLocations(numberOfLocations);
-      locations.forEach((location) =>
-        this.locations.set(location.name, location)
-      );
-      // Link the locations together
-      const connectedlocations = connectLocationsDFS(locations);
-      // Add creatures and artifacts to the locations
+      // 1) Generate locations (pass descriptions)
+      const locs = generateLocations(counts.locations, locationDescriptions);
+      locs.forEach((loc) => this.locations.set(loc.name, loc));
+
+      // 2) Connect locations
+      const connectedLocations = connectLocationsDFS(locs);
+
+      // 3) Populate with creatures & artifacts
+      // Signature we established earlier:
+      // populateLocations(locationsIn, numCreatures, numArtifacts,
+      //                   pCreatureInLocation, pCreatureHasArtifact = 0, pArtifactInLocation = 1)
       populateLocations(
-        connectedlocations,
-        numberOfCreatures,
-        numberOfArtifacts,
-        chanceCreatureInLocation,
-        chanceCreatureHasArtifact
+        connectedLocations,
+        counts.creatures,
+        counts.artifacts,
+        odds.creatureInLocation,
+        odds.creatureHasArtifact,
+        odds.artifactInLocation // ← optional;
       );
 
-      // Set starting location
-      const startingLocation = getLocation(this.locations, startLocation);
-
+      // 4) Start location
+      const startingLocation = getLocation(this.locations, startLocationName);
       if (!startingLocation) {
         throw new AppError(
-          `Starting location "${startLocation}" is undefined.`,
+          `Starting location "${startLocationName}" is undefined.`,
           400
         );
       }
 
-      // Place player in the starting location
+      // 5) Place player
       this.player.moveTo(startingLocation);
 
+      // 6) Set up the world loop
+
+      worldState.locationsMap = this.locations; // <— give the runner your world
+      // worldState.tickMs = 1000;
+      // worldState.seed  = 0xA17C32F1;
+
       console.log(
-        `Created world map. Added ${numberOfLocations} locations, ${numberOfCreatures} monsters and ${numberOfArtifacts} artifacts. The chance of a monster being in a location has been set to ${chanceCreatureInLocation}, and the chance of a monster having an artifact to ${chanceCreatureHasArtifact}. Start location is ${startLocation}`
+        `Created world map. Locations=${counts.locations}, ` +
+          `Creatures=${counts.creatures}, Artifacts=${counts.artifacts}. ` +
+          `Odds: creatureInLocation=${odds.creatureInLocation}, ` +
+          `creatureHasArtifact=${odds.creatureHasArtifact}, ` +
+          `artifactInLocation=${odds.artifactInLocation}. ` +
+          `Start=${startLocationName}`
       );
     } catch (error) {
       console.error("Error during setup:", error);
@@ -74,23 +81,43 @@ class Game {
       throw new AppError(`Failed to start the game. ${error}`, 400);
     }
   }
-
-  getLocationData(location) {
+  getLocationData(location, forPlayer = this.player) {
     try {
-      if (!location) {
-        throw new AppError("location is undefined.", 400);
+      if (!location) throw new AppError("location is undefined.", 400);
+
+      const d = location.getDetails?.() || {
+        description: location.description,
+        exits: location.exits
+      };
+
+      // creatures/artifacts as strings (matches your current payload)
+      const creaturesStr =
+        location.showCreatures?.() ??
+        (location.creatures || []).map((c) => c.name).join(", ");
+      const artifactsStr =
+        location.showArtifacts?.() ??
+        (location.artifacts || []).map((a) => a.name).join(", ");
+
+      // players list (names). Always include the requester.
+      const playersArr = (location.players || [])
+        .filter(Boolean)
+        .map((p) => p.name)
+        .filter(Boolean);
+
+      if (forPlayer?.name && !playersArr.includes(forPlayer.name)) {
+        playersArr.unshift(forPlayer.name);
       }
-      const locationDetails = location.getDetails();
+
       return {
-        description: locationDetails.description,
-        exits: locationDetails.exits,
-        creatures: location.showCreatures(),
-        artifacts: location.showArtifacts(),
-        result: "",
+        description: d.description,
+        exits: Array.isArray(d.exits) ? d.exits.join(", ") : d.exits,
+        creatures: creaturesStr,
+        artifacts: artifactsStr,
+        players: playersArr, // ← NEW
+        result: ""
       };
     } catch (error) {
-      console.error("Error getting location data:", error);
-      throw new AppError(`Failed to get location data.${error}`, 400);
+      throw new AppError(`Failed to get location data. ${error}`, 400);
     }
   }
 
@@ -103,9 +130,22 @@ class Game {
     }
   }
 
-  emitCallback(location, player) {
+  // Always emit a consistent payload: stats object + inventory string
+
+  emitCallback(location) {
     try {
-      io.emit("update", { location, player });
+      const p = this.player; // authoritative instance
+      const payload = {
+        location,
+        player: {
+          stats: p.getStatsObj(), // guaranteed function
+          classType: p.classType || p.playerClass || "",
+          inventory: p.showInventory?.() ?? p.inventory
+        }
+      };
+      // dev log
+      console.log("[emit update]", JSON.stringify(payload.player, null, 2));
+      io.emit("update", payload);
     } catch (error) {
       throw new AppError(`Failed to emit callback. ${error}`, 400);
     }

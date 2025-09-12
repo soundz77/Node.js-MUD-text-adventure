@@ -2,7 +2,7 @@ import AppError from "../../../../base-template/src/utils/errors/AppError.js";
 import calculateAttackDamage from "./calculateAttackDamage.js";
 import retaliation from "./retaliation.js";
 import flee from "./flee.js";
-import gameData from "../../gameData/game1.js";
+import { gameData } from "../../gameData/gameData.js";
 import gameMessages from "../../gameData/gameMessages.js";
 
 const attackCreature = (game, creatureName) => {
@@ -15,9 +15,9 @@ const attackCreature = (game, creatureName) => {
       return { message, player };
     }
 
-    const creaturesInLocation = game.player.currentLocation.creatures;
+    const creaturesInLocation = game.player.currentLocation?.creatures || [];
     const target = creaturesInLocation.find(
-      (monster) => monster.name.toLowerCase() === creatureName.toLowerCase()
+      (m) => m.name.toLowerCase() === creatureName.toLowerCase()
     );
 
     if (!target) {
@@ -25,19 +25,24 @@ const attackCreature = (game, creatureName) => {
       return { message, player };
     }
 
-    // Check if target.health is initialized
-    if (target?.health === undefined) {
-      throw new AppError(`Creature health is undefined or not initialized`);
+    // Validate numeric fields without truthy traps
+    const playerAttack = Number(game.player.stats.attack);
+    const targetDefence = Number(target.stats.defence);
+
+    if (Number.isNaN(playerAttack) || Number.isNaN(targetDefence)) {
+      throw new AppError(
+        `Attack/defence invalid: playerAttack=${game.player.attack}, targetDefence=${target.defence}`,
+        400
+      );
     }
 
-    // Player attacks the creature
-    const playerAttack = game.player.attack;
-    const targetDefence = target.defence;
-    const { critChance, critMultiplier } = gameData; // import attack config
-
-    if (!playerAttack || !targetDefence || !critChance || !critMultiplier) {
+    const {
+      odds: { critChance },
+      critMultiplier
+    } = gameData;
+    if (typeof critChance !== "number" || typeof critMultiplier !== "number") {
       throw new AppError(
-        `playerAttack, targetDefence, critChance or critMultiplier is undefined or not initialized ${playerAttack}, ${targetDefence}, ${critChance} ${critMultiplier}`,
+        `Crit config invalid: critChance=${critChance}, critMultiplier=${critMultiplier}`,
         400
       );
     }
@@ -50,63 +55,83 @@ const attackCreature = (game, creatureName) => {
       critMultiplier
     );
 
-    if (!totalDamage) {
-      throw new AppError(`totalDamage not return ${totalDamage}`, 400);
+    if (!totalDamage || typeof totalDamage.attackDamage !== "number") {
+      throw new AppError(`calculateAttackDamage returned invalid result`, 400);
     }
-    message += totalDamage.message;
-    message += `You attacked ${creatureName} for ${totalDamage.attackDamage} damage. `;
 
-    // Reduce target health
-    target.health -= totalDamage.attackDamage;
+    message += totalDamage.message ?? "";
+    message += `You attacked ${target.name} for ${totalDamage.attackDamage} damage. `;
 
-    // target has been killed
-    if (!target.isAlive()) {
+    // Apply damage
+    target.health = Math.max(
+      0,
+      Number(target.health ?? 0) - totalDamage.attackDamage
+    );
+
+    if (!target.isAlive?.() ? target.health <= 0 : !target.isAlive()) {
+      // Target died
       message += `${target.name} has been defeated! `;
-      creaturesInLocation.splice(creaturesInLocation.indexOf(target), 1); // remove creature from current location
 
+      // Remove creature from location
+      const idx = creaturesInLocation.indexOf(target);
+      if (idx >= 0) creaturesInLocation.splice(idx, 1);
+
+      // Drop inventory
       message += gameMessages.inventoryDropped;
-
-      // drop target inventory
-      if (target.hasInventoryItems()) {
-        const creatureInventory = target.getInventory();
-        target.dropInventory(game.player.currentLocation); // drop inventory into current location
-        message += creatureInventory;
+      if (target.hasInventoryItems?.()) {
+        const creatureInventory = target.getInventory?.();
+        target.dropInventory?.(game.player.currentLocation);
+        message += creatureInventory || "";
       } else {
         message += gameMessages.emptyInventory;
       }
 
-      // Increment kill count and gain XP
-      game.player.killCount++;
-      const xp = target.killValue;
-      const leveledUp = game.player.gainExperience(xp);
-      if (leveledUp?.length > 0) {
-        message += leveledUp;
+      // Rewards
+      game.player.killCount = (game.player.killCount || 0) + 1;
+      const xp = Number(target.killValue ?? 0);
+      const leveledUp = game.player.gainExperience?.(xp);
+      if (leveledUp && leveledUp.length > 0) {
+        message += ` ${leveledUp}`;
       }
-      // target is still alive
     } else {
-      // Chance for the creature to retaliate
-      const retaliated = retaliation(game, target); // { message: String, damage: Number }
-      message += retaliated.message;
+      // Retaliation
+      const retaliated = retaliation(game, target); // { message, damage }
+      if (retaliated?.message) message += retaliated.message;
 
-      // Check if the player survived the retaliation
-      if (!game.player.isAlive()) {
+      if (
+        !game.player.isAlive?.()
+          ? game.player.health <= 0
+          : !game.player.isAlive()
+      ) {
         message += gameMessages.playerDefeated;
-        game.player.dropInventory(game.player.currentLocation); // drop inventory into current location
-
-        // add kill
-        target.addKill(1);
-        game.isGameOver = true; // End the game - not implemented!!!!
+        game.player.dropInventory?.(game.player.currentLocation);
+        // track kill for the target (your addKill returns ++)
+        target.addKill?.();
+        game.isGameOver = true;
       }
     }
 
     // Handle creatures fleeing
-    const creaturesFled = flee(game, creaturesInLocation); // rtn {message}
-    if (creaturesFled.length > 0) {
-      message += creaturesFled;
+    const fleeMsg = flee(game, creaturesInLocation); // if this returns a string
+    if (fleeMsg && fleeMsg.length > 0) {
+      message += ` ${fleeMsg}`;
     }
+
     message = message.trim();
 
-    return { message, player };
+    // Optionally include fresh player stats for the UI
+    if (typeof game.player.getStatsObj === "function") {
+      player.stats = game.player.getStatsObj();
+      player.inventory = game.player.showInventory?.();
+    }
+
+    return {
+      message,
+      player: {
+        stats: game.player.getStatsObj(),
+        inventory: game.player.showInventory()
+      }
+    };
   } catch (error) {
     throw new AppError(`Unable to attack: ${error}`, 400);
   }

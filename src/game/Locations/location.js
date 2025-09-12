@@ -3,8 +3,9 @@ class Location {
     this.name = name;
     this.description = description;
     this.exits = {};
-    this.creatures = [];
-    this.artifacts = [];
+    this.creatures = this.creatures || [];
+    this.artifacts = this.artifacts || [];
+    this.players = this.players || [];
   }
 
   // Set
@@ -13,7 +14,6 @@ class Location {
   }
 
   // Get
-
   getExit(direction) {
     const exit = this.exits[direction.toLowerCase()];
     return exit;
@@ -29,6 +29,7 @@ class Location {
       exits: Object.keys(this.exits).join(", ").trim(),
       artifacts: this.showArtifacts(),
       creatures: this.showCreatures(),
+      players: this.showPlayers()
     };
   }
 
@@ -43,6 +44,11 @@ class Location {
     return `${this.creatures.map((character) => character.name).join(", ")}`;
   }
 
+  showPlayers() {
+    if (this.players.length === 0) return "";
+    return `${this.players.map((artifact) => artifact.name).join(", ")}`;
+  }
+
   // Add
   addCreature(character) {
     this.creatures.push(character);
@@ -54,7 +60,18 @@ class Location {
     // console.log(`Added artifact: ${artifact.name} to ${this.name}`);
   }
 
+  addPlayer(player) {
+    this.players = this.players || [];
+    if ((this, this.players.includes(player))) this.players.push(player);
+  }
+
   // Remove
+  removePlayer(player) {
+    if (!Array.isArray(this.players)) return;
+    const i = this.players.indexOf(player);
+    if (i >= 0) this.players.splice(i, 1);
+  }
+
   removeArtifact(artifactName) {
     const index = this.artifacts.findIndex(
       (artifact) => artifact.name.toLowerCase() === artifactName.toLowerCase()
@@ -64,13 +81,6 @@ class Location {
       return removedArtifact;
     }
     return null;
-  }
-
-  removeCreature(character) {
-    const index = this.creatures.indexOf(character);
-    if (index > -1) {
-      this.creatures.splice(index, 1);
-    }
   }
 }
 

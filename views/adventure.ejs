@@ -105,10 +105,12 @@
               <% if (location && location.description) { %><%=
               location.description %><% } %>
             </h2>
+            <h2 id="Players"></h2>
             <h2 id="locationExits">
               <% if (location && location.exits) { %>Exits: <%= location.exits
               %><% } %>
             </h2>
+
             <h2 id="creatures">
               <% if (location && location.creatures && location.creatures.length
               > 0) { %>Monsters: <%= location.creatures %><% } %>
@@ -146,131 +148,198 @@
     <!-- Socket.IO library -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+      const socket = io({ transports: ["websocket"] });
+      let seq = 1;
 
-      socket.on("connect", () => {
-        console.log("Connected to server");
+      // DOM cache
+      const els = {
+        form: document.getElementById("command-form"),
+        cmd: document.getElementById("command"),
+        msgList: document.getElementById("message-list"),
+        location: document.getElementById("location"),
+        exits: document.getElementById("locationExits"),
+        creatures: document.getElementById("creatures"),
+        artifacts: document.getElementById("artifacts"),
+        players: document.getElementById("players"),
+        kills: document.getElementById("kills"),
+        level: document.getElementById("level"),
+        inv: document.getElementById("inventory-list"),
+        players: document.getElementById("players"),
+        bars: {
+          health: {
+            span: document.getElementById("health"),
+            bar: document.getElementById("health-bar")
+          },
+          stamina: {
+            span: document.getElementById("stamina"),
+            bar: document.getElementById("stamina-bar")
+          },
+          strength: {
+            span: document.getElementById("strength"),
+            bar: document.getElementById("strength-bar")
+          },
+          defence: {
+            span: document.getElementById("defence"),
+            bar: document.getElementById("defence-bar")
+          },
+          attack: {
+            span: document.getElementById("attack"),
+            bar: document.getElementById("attack-bar")
+          },
+          experience: {
+            span: document.getElementById("experience"),
+            bar: document.getElementById("experience-bar")
+          }
+        },
+        chat: {
+          form: document.getElementById("chat-form"),
+          input: document.getElementById("message"),
+          ul: document.getElementById("messages")
+        }
+      };
+
+      // Structured logging
+      const logEmit = (ev, data) =>
+        console.debug("[SOCKET→]", ev, JSON.stringify(data, null, 2));
+      const logRecv = (ev, data) =>
+        console.debug("[SOCKET←]", ev, JSON.stringify(data, null, 2));
+
+      socket.on("connect", () => console.log("Connected:", socket.id));
+      socket.on("disconnect", (r) => console.warn("Disconnected:", r));
+
+      // Send command
+      els.form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const text = els.cmd.value.trim();
+        if (!text) return;
+        const id = seq++;
+        const payload = { id, text };
+        els.msgList.textContent = "> " + text;
+        logEmit("processCommand", payload);
+        socket.emit("processCommand", payload);
+        els.cmd.value = "";
       });
 
-      const form = document.getElementById("command-form");
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const commandInput = document.getElementById("command").value;
-        socket.emit("processCommand", commandInput);
-        document.getElementById("command").value = "";
-        console.log("emitted command: " + commandInput);
-      });
-
-      socket.on("update", (payload) => {
-        const { player, location } = payload;
-        console.log("Received update:", payload);
-
-        // Display the command result message
-        if (location && location.result) {
-          document.getElementById("message-list").textContent = location.result;
-        }
-
-        // Workaround: Attacks are returned under "message" - should be result
-        if (location && location.message) {
-          document.getElementById("message-list").textContent =
-            location.message;
-        }
-
-        // Apply the updates
-        if (location) {
-          if (location.description) {
-            document.getElementById("location").textContent =
-              location.description;
-          }
-          if (location.exits) {
-            document.getElementById("locationExits").textContent =
-              "Exits: " + location.exits;
-          }
-          if (location.creatures) {
-            document.getElementById("creatures").textContent =
-              "Monsters: " + location.creatures;
-          } else {
-            document.getElementById("creatures").textContent = "";
-          }
-          if (location.artifacts) {
-            document.getElementById("artifacts").textContent =
-              "Artifacts: " + location.artifacts;
-          } else {
-            document.getElementById("artifacts").textContent = "";
-          }
-        }
-
-        // Apply updates for the current player only
-        if (player && player.stats) {
-          // Update player stats
-          if (player.stats.health) {
-            if (player.stats.health < 0) {
-              player.stats.health = 0;
-            }
-            document.getElementById("health").textContent = player.stats.health;
-            document.getElementById("health-bar").style.width =
-              player.stats.health + "%";
-          }
-          if (player.stats.stamina) {
-            document.getElementById("stamina").textContent =
-              player.stats.stamina;
-            document.getElementById("stamina-bar").style.width =
-              player.stats.stamina + "%";
-          }
-          if (player.stats.strength) {
-            document.getElementById("strength").textContent =
-              player.stats.strength;
-            document.getElementById("strength-bar").style.width =
-              player.stats.strength + "%";
-          }
-          if (player.stats.defence) {
-            document.getElementById("defence").textContent =
-              player.stats.defence;
-            document.getElementById("defence-bar").style.width =
-              player.stats.defence + "%";
-          }
-          if (player.stats.attack) {
-            document.getElementById("attack").textContent = player.stats.attack;
-            document.getElementById("attack-bar").style.width =
-              player.stats.attack + "%";
-          }
-          if (player.stats.experience) {
-            document.getElementById("experience").textContent =
-              player.stats.experience;
-            document.getElementById("experience-bar").style.width =
-              player.stats.experience + "%";
-          }
-          if (player.stats.kills) {
-            document.getElementById("kills").textContent = player.stats.kills;
-          }
-          if (player.stats.level) {
-            document.getElementById("level").textContent = player.stats.level;
-          }
-          // Update inventory
-          const inventoryList = document.getElementById("inventory-list");
-          if (player.inventory) {
-            inventoryList.innerHTML = "Your inventory: " + player.inventory;
-          }
-        }
-      });
-
-      // Chat form emitter
-      const chatForm = document.getElementById("chat-form");
-      chatForm.addEventListener("submit", function (e) {
+      // Send chat
+      els.chat.form.addEventListener("submit", (e) => {
         e.preventDefault();
         const playerName = "<%= player.name %>";
-        const message =
-          playerName + ": " + document.getElementById("message").value;
-        socket.emit("chatMessage", message);
-        document.getElementById("message").value = "";
+        const text = els.chat.input.value.trim();
+        if (!text) return;
+        const msg = `${playerName}: ${text}`;
+        logEmit("chatMessage", msg);
+        socket.emit("chatMessage", msg);
+        els.chat.input.value = "";
       });
 
-      // Receive chat events from server
-      socket.on("chatMessage", function (msg) {
-        const item = document.createElement("li");
-        item.textContent = msg;
-        document.getElementById("messages").appendChild(item);
+      // Batch updates
+      const queue = [];
+      socket.on("update", (payload) => {
+        logRecv("update", payload);
+        queue.push(payload);
       });
+      socket.on("chatMessage", (msg) => {
+        logRecv("chatMessage", msg);
+        queue.push({ _chat: msg });
+      });
+
+      // Helpers
+      function clamp01(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+      }
+      function setBar(which, value) {
+        const el = els.bars[which];
+        if (!el) return;
+        const v = clamp01(value);
+        el.span.textContent = v;
+        el.bar.style.width = v + "%";
+      }
+      const listify = (arr) =>
+        Array.isArray(arr) ? arr.join(", ") : arr ?? "";
+
+      const MAX_CHAT = 200;
+      const SELF_NAME = "<%= player.name %>".toLowerCase(); // 👈 used to filter self if server includes it
+
+      function apply(payload) {
+        const SELF_NAME = "<%= player.name %>".toLowerCase();
+
+        // Chat
+        if (payload._chat != null) {
+          const li = document.createElement("li");
+          li.textContent = payload._chat;
+          els.chat.ul.appendChild(li);
+          while (els.chat.ul.children.length > MAX_CHAT)
+            els.chat.ul.removeChild(els.chat.ul.firstChild);
+          return;
+        }
+
+        const { player, location } = payload || {};
+
+        // Location section
+        if (location) {
+          if (location.result != null)
+            els.msgList.textContent = location.result;
+          if (location.message != null)
+            els.msgList.textContent = location.message; // legacy
+          if (location.description != null)
+            els.location.textContent = location.description;
+          if (location.exits != null)
+            els.exits.textContent = "Exits: " + listify(location.exits);
+
+          els.creatures.textContent =
+            location.creatures && location.creatures.length
+              ? "Monsters: " + listify(location.creatures)
+              : "";
+
+          els.artifacts.textContent =
+            location.artifacts && location.artifacts.length
+              ? "Artifacts: " + listify(location.artifacts)
+              : "";
+
+          // Show players present (always show "you" at minimum)
+          if (Array.isArray(location.players) && els.players) {
+            const names = location.players.map((n) => {
+              const s = String(n);
+              return s.toLowerCase() === SELF_NAME ? "you" : s;
+            });
+            els.players.textContent = "Players: " + (names.join(", ") || "you");
+          }
+        }
+
+        // Player (stats-only)
+        if (player && player.stats) {
+          const S = player.stats;
+          if ("health" in S) setBar("health", S.health);
+          if ("stamina" in S) setBar("stamina", S.stamina);
+          if ("strength" in S) setBar("strength", S.strength);
+          if ("defence" in S) setBar("defence", S.defence);
+          if ("attack" in S) setBar("attack", S.attack);
+          if ("experience" in S) setBar("experience", S.experience);
+          if ("kills" in S) els.kills.textContent = S.kills;
+          if ("level" in S) els.level.textContent = S.level;
+        }
+
+        // Inventory string/list
+        if (player && "inventory" in player && player.inventory != null) {
+          els.inv.innerHTML = "Your inventory: " + listify(player.inventory);
+        }
+      }
+
+      function frame() {
+        if (queue.length) {
+          const items = queue.splice(0, queue.length);
+          for (const p of items) apply(p);
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+
+      // Mobile input niceties
+      els.cmd.setAttribute("autocapitalize", "off");
+      els.cmd.setAttribute("autocorrect", "off");
+      els.cmd.setAttribute("spellcheck", "false");
+      els.cmd.setAttribute("inputmode", "text");
     </script>
   </body>
 </html>

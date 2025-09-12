@@ -2,14 +2,23 @@ import AppError from "../../../../base-template/src/utils/errors/AppError.js";
 
 const movePlayer = (game, direction) => {
   try {
-    const nextLocation = game.player.currentLocation.getExit(direction);
-    if (nextLocation) {
-      game.player.moveTo(nextLocation);
-      return `You move ${direction} to ${nextLocation.description}.`;
+    const current = game.player.currentLocation;
+    if (!current) {
+      throw new AppError("Player has no current location", 400);
     }
-    return `There is no exit to the ${direction}.`;
+
+    const nextLocation = current.getExit(direction);
+    if (!nextLocation) {
+      return `There is no exit to the ${direction}.`;
+    }
+
+    // Let Player.moveTo() handle removal/adding to location.players
+    game.player.moveTo(nextLocation);
+
+    return `You move ${direction} to ${nextLocation.description}.`;
   } catch (error) {
-    throw new AppError(`Error moving to ${direction} ${error}`);
+    throw new AppError(`Error moving to ${direction}: ${error.message}`, 400);
   }
 };
+
 export default movePlayer;

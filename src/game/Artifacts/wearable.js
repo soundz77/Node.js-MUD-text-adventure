@@ -1,16 +1,22 @@
-import Weapon from "./artifact.js";
+import Artifact from "./artifact.js";
 
-class Wearable extends Weapon {
-  constructor(name, description, attack, defence) {
-    super(name, description);
-    this.attack = attack;
-    this.defence = defence;
-    this.type = "armour";
+class Wearable extends Artifact {
+  constructor(
+    name,
+    description,
+    { defence = 0, attack = 0, strength = 0, condition = 100 } = {}
+  ) {
+    super(name, description, {
+      condition,
+      stats: { defence, attack, strength }
+    });
+    this.type = "wearable";
+    this.equipped = false;
   }
 
   // move to Artifact
   getDetails() {
-    return `${this.name}: ${this.description}, defence: ${this.defence}, Condition: ${this.condition}`;
+    return `${this.name}: ${this.description}, defence: ${this.stats.defence}, strength: ${this.stats.strength}, Condition: ${this.condition}`;
   }
 }
 
