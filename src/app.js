@@ -18,6 +18,7 @@ import { socketConfig } from "./config/socketConfig.js";
 import configureAppMiddleware from "./config/configureAppMiddleware.js";
 import configureRoutes from "./config/configureRoutes.js";
 import globalErrorHandler from "../base-template/src/utils/errors/globalErrorHandler.js";
+import { startWorldLoop } from "./game/world/runner.js";
 
 const main = handleAsync(async () => {
   const app = setupApp(); // Initialize the base-template app
@@ -28,6 +29,7 @@ const main = handleAsync(async () => {
   configureRoutes(app);
 
   app.use(globalErrorHandler);
+  startWorldLoop();
 });
 
 main();
