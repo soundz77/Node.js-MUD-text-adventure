@@ -1,11 +1,14 @@
 import { Server } from "socket.io";
-import game from "../game/startGame.js";
 import sessionMessages from "../utils/logging/messages/sessionMessages.js";
 
-let io;
+const socketConfig = (server, { game }) => {
+  const io = new Server(server, {
+    path: "/socket.io", // explicit; must match client
+    serveClient: false // Not loading from localhost
+  });
 
-const socketConfig = (server) => {
-  io = new Server(server);
+  // Give the game a transport-agnostic publisher
+  game.setPublisher((event, payload) => io.emit(event, payload));
 
   // Socket.IO connection handling
   io.on("connection", (socket) => {
@@ -24,17 +27,14 @@ const socketConfig = (server) => {
       io.emit("chatMessage", msg);
     });
 
+    socket.conn.on("error", (err) => console.error("Engine error", err));
+
     socket.on("disconnect", () => {
       console.log(sessionMessages.success.disconnect);
     });
   });
 
-  io.engine.on("connection_error", (err) => {
-    console.log(err.req); // the request object
-    console.log(err.code); // the error code, for example 1
-    console.log(err.message); // the error message, for example "Session ID unknown"
-    console.log(err.context); // some additional error context
-  });
+  return io;
 };
 
-export { socketConfig, io };
+export default socketConfig;
