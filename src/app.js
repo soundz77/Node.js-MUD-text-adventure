@@ -16,7 +16,7 @@ const main = async () => {
   configureAppMiddleware(app);
   configureRoutes(app);
 
-  game.setPublisher((ev, p) => io.emit(ev, p));
+  // game.setPublisher((ev, p) => io.emit(ev, p));
   await new Promise((res) => server.listen(3000, res));
 
   app.use(globalErrorHandler);

@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import sessionMessages from "../utils/logging/messages/sessionMessages.js";
+import { createEmitters } from "../../src/game/gameData/emitters.js";
 
 const socketConfig = (server, { game }) => {
   const io = new Server(server, {
@@ -7,34 +8,32 @@ const socketConfig = (server, { game }) => {
     serveClient: false // Not loading from localhost
   });
 
-  // Give the game a transport-agnostic publisher
-  game.setPublisher((event, payload) => io.emit(event, payload));
+  const emitters = createEmitters(io);
 
-  // Socket.IO connection handling
+  // Option 1: give Game the full emitters object
+  game.setEmitters(emitters);
+
   io.on("connection", (socket) => {
     console.log(sessionMessages.success.connect);
 
-    // Handle the "processCommand" event
     socket.on("processCommand", (command) => {
-      game.processCommand(command, (message) => {
-        // Emit the command result back to the client
-        socket.emit("commandResult", message);
+      // Modern path: rely on broadcast payload containing message+location
+      const { ok, message, location } = game.processCommand(command, {
+        socket
       });
+
+      // Optional: also send a per-player message event
+      emitters.toPlayer(socket, { message, location });
     });
 
-    // Handle chat messages
-    socket.on("chatMessage", (msg) => {
-      io.emit("chatMessage", msg);
-    });
+    socket.on("chatMessage", (msg) => emitters.toAll({ type: "chat", msg }));
 
     socket.conn.on("error", (err) => console.error("Engine error", err));
-
-    socket.on("disconnect", () => {
-      console.log(sessionMessages.success.disconnect);
-    });
+    socket.on("disconnect", () =>
+      console.log(sessionMessages.success.disconnect)
+    );
   });
 
-  return io;
+  // return io;
 };
-
 export default socketConfig;

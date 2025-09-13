@@ -31,7 +31,7 @@ const addRandomCreatureToLocation = (location, opts = {}) => {
     // console.log(`Added ${creature.name} to location ${location.name}`);
     if (hasArtifact) {
       //  console.log("and gave it:");
-      creature.inventory.forEach((a) => console.log(a.name));
+      // creature.inventory.forEach((a) => console.log(a.name));
     } else {
       // console.log("and gave it nothing.");
     }

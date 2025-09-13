@@ -1,4 +1,4 @@
-import sessionConfig from "./middleware/sessionConfig.js";
+import sessionConfig from "../middleware/sessionConfig.js";
 import session from "express-session";
 
 const appMiddleware = (app) => {

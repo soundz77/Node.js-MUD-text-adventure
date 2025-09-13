@@ -18,27 +18,47 @@ class Game {
     this.player = new Player("");
     this.isGameOver = false;
 
-    this._publish = null;
-    this._queued = null;
+    this.emitters = null; // set later
+    this._queued = [];
     this.broadcast = this.broadcast.bind(this);
   }
-  broadcast(event, payload) {
-    // ensure the queue exists
-    if (!Array.isArray(this._queued)) this._queued = [];
 
-    if (this._publish) {
-      try {
-        this._publish(event, payload);
-        return;
-      } catch (e) {
-        // fall back to queue if publisher throws
-        this._queued.push([event, payload]);
-        return;
-      }
+  setEmitters(emitters) {
+    this.emitters = emitters;
+    // flush anything queued before emitters existed
+    if (this._queued.length) {
+      for (const [event, payload] of this._queued)
+        this._doBroadcast(event, payload);
+      this._queued.length = 0;
     }
-    this._queued.push([event, payload]);
   }
 
+  // internal: map logical events to wire events and emit
+  _doBroadcast(event, payload) {
+    if (!this.emitters) {
+      this._queued.push([event, payload]);
+      return;
+    }
+
+    const { events } = this.emitters;
+    switch (event) {
+      case "update":
+        this.emitters.toAll(payload); // world:update
+        break;
+      case "error":
+        this.emitters.toAll({ ...payload, type: "error" }); // or add emitters.toError(...)
+        break;
+      default:
+        // fall back: send as player message to everyone, or add a generic emitters.emit(event,...)
+        this.emitters.toAll({ event, ...payload });
+    }
+  }
+
+  broadcast(event, payload) {
+    this._doBroadcast(event, payload);
+  }
+
+  /*
   setPublisher(fn) {
     this._publish = fn;
     const q = Array.isArray(this._queued) ? this._queued : [];
@@ -47,11 +67,11 @@ class Game {
       try {
         fn(ev, pl);
       } catch {
-        /* swallow */
+        /* swallow *
       }
     }
   }
-
+*/
   setup() {
     try {
       const { counts, odds, startLocationName } = gameData;
@@ -167,12 +187,13 @@ class Game {
 
       // after state change, broadcast the current snapshot
       const payload = this.buildUpdatePayload(this.player.currentLocation);
-      payload.result = message; // Include the result of the action
+      payload.message = message; // Include the result of the action
       payload.location = location; // Include structured location
+      payload.v = 1;
+
       this.broadcast("update", payload);
 
-      // return a message for the *requesting socket* to show
-      return { ok: true, message };
+      return { ok: true, message, location };
     } catch (error) {
       console.error("Error processing command:", error);
       return { ok: false, message: `Failed to process command. ${error}` };
