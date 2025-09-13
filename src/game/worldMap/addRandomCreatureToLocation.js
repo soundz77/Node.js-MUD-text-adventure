@@ -28,12 +28,12 @@ const addRandomCreatureToLocation = (location, opts = {}) => {
     }
 
     // debug logs
-    console.log(`Added ${creature.name} to location ${location.name}`);
+    // console.log(`Added ${creature.name} to location ${location.name}`);
     if (hasArtifact) {
-      console.log("and gave it:");
+      //  console.log("and gave it:");
       creature.inventory.forEach((a) => console.log(a.name));
     } else {
-      console.log("and gave it nothing.");
+      // console.log("and gave it nothing.");
     }
   } catch (error) {
     throw new AppError(`Error adding creature to location. ${error}`, 400);

@@ -9,7 +9,7 @@ const addRandomArtifactToLocation = (location) => {
     const artifact = createArtifactFromBlueprint(bp);
 
     location.addArtifact(artifact);
-    console.log(`Placed ${artifact.name} in ${location.name}`);
+   //  console.log(`Placed ${artifact.name} in ${location.name}`);
   } catch (error) {
     throw new AppError(`Error adding artifact to location. ${error}`, 400);
   }

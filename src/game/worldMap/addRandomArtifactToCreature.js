@@ -11,7 +11,7 @@ const addRandomArtifactToCreature = (creature) => {
 
     creature.addArtifact(artifact);
 
-    console.log(`Gave ${artifact.name} to creature: ${creature.name}`);
+//    console.log(`Gave ${artifact.name} to creature: ${creature.name}`);
   } catch (error) {
     throw new AppError(`Error adding artifact to creature. ${error}`, 400);
   }
