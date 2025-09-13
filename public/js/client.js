@@ -182,6 +182,16 @@
         });
         els.players.textContent = "Players: " + (names.join(", ") || "you");
       }
+
+      if (Array.isArray(location.changes) && els.changeList) {
+        // Clear and re-render (simple and safe)
+        els.changeList.textContent = "";
+        for (const line of location.changes) {
+          const li = document.createElement("li");
+          li.textContent = String(line);
+          els.changeList.appendChild(li);
+        }
+      }
     }
 
     // Player (stats)
