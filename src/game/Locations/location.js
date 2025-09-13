@@ -3,20 +3,20 @@ class Location {
     this.name = name;
     this.description = description;
     this.exits = {};
-    this.creatures = this.creatures || [];
-    this.artifacts = this.artifacts || [];
-    this.players = this.players || [];
+    this.creatures = [];
+    this.artifacts = [];
+    this.players = [];
   }
 
   // Set
   setExit(direction, location) {
     this.exits[direction.toLowerCase()] = location;
+    return this;
   }
 
   // Get
   getExit(direction) {
-    const exit = this.exits[direction.toLowerCase()];
-    return exit;
+    return this.exits[direction.toLowerCase()];
   }
 
   getDescription() {
@@ -36,49 +36,71 @@ class Location {
   // Show
   showArtifacts() {
     if (this.artifacts.length === 0) return "";
-    return `${this.artifacts.map((artifact) => artifact.name).join(", ")}`;
+    return this.artifacts.map((a) => a.name ?? String(a)).join(", ");
   }
 
   showCreatures() {
     if (this.creatures.length === 0) return "";
-    return `${this.creatures.map((character) => character.name).join(", ")}`;
+    return this.creatures.map((c) => c.name ?? String(c)).join(", ");
   }
 
   showPlayers() {
-    if (this.players.length === 0) return "";
-    return `${this.players.map((artifact) => artifact.name).join(", ")}`;
+    if (this.players.length === 0) return "No one else";
+    return this.players.map((p) => p.name ?? String(p)).join(", ");
+  }
+
+  // Helpers
+  hasPlayer(player) {
+    // dedupe by id if present, else by object identity
+    if (player && typeof player === "object" && "id" in player) {
+      return this.players.some(
+        (p) => p && typeof p === "object" && p.id === player.id
+      );
+    }
+    return this.players.includes(player);
   }
 
   // Add
   addCreature(character) {
     this.creatures.push(character);
-    // console.log(`Added character: ${character.name} to ${this.name}`);
+    return this;
   }
 
   addArtifact(artifact) {
     this.artifacts.push(artifact);
-    // console.log(`Added artifact: ${artifact.name} to ${this.name}`);
+    return this;
   }
 
   addPlayer(player) {
-    this.players = this.players || [];
-    if ((this, this.players.includes(player))) this.players.push(player);
+    if (!player) return this;
+    if (!this.hasPlayer(player)) {
+      this.players.push(player);
+    }
+    return this;
   }
 
   // Remove
   removePlayer(player) {
-    if (!Array.isArray(this.players)) return;
-    const i = this.players.indexOf(player);
-    if (i >= 0) this.players.splice(i, 1);
+    if (!Array.isArray(this.players)) return this;
+    let idx = -1;
+    if (player && typeof player === "object" && "id" in player) {
+      idx = this.players.findIndex(
+        (p) => p && typeof p === "object" && p.id === player.id
+      );
+    } else {
+      idx = this.players.indexOf(player);
+    }
+    if (idx >= 0) this.players.splice(idx, 1);
+    return this;
   }
 
   removeArtifact(artifactName) {
-    const index = this.artifacts.findIndex(
-      (artifact) => artifact.name.toLowerCase() === artifactName.toLowerCase()
+    const i = this.artifacts.findIndex(
+      (a) => (a.name ?? "").toLowerCase() === String(artifactName).toLowerCase()
     );
-    if (index !== -1) {
-      const [removedArtifact] = this.artifacts.splice(index, 1);
-      return removedArtifact;
+    if (i !== -1) {
+      const [removed] = this.artifacts.splice(i, 1);
+      return removed;
     }
     return null;
   }

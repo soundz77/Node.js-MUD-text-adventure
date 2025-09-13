@@ -14,7 +14,7 @@ const processCommand = (game, command) => {
 
   // 1) If empty -> emit full snapshot with message and return
   if (!input) {
-    const loc = game.getLocationData(game.player.currentLocation, game.player);
+    const loc = game.getLocationData(game.player.currentLocation);
     loc.result = gameMessages.unknownCommand;
     game.emitCallback(loc); // emit from canonical player
     return;

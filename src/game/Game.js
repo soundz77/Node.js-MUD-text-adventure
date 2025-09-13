@@ -81,13 +81,14 @@ class Game {
       throw new AppError(`Failed to start the game. ${error}`, 400);
     }
   }
-  getLocationData(location, forPlayer = this.player) {
+  getLocationData(location) {
     try {
       if (!location) throw new AppError("location is undefined.", 400);
 
       const d = location.getDetails?.() || {
         description: location.description,
-        exits: location.exits
+        exits: location.exits,
+        changes: location.changes || ""
       };
 
       // creatures/artifacts as strings (matches your current payload)
@@ -97,23 +98,14 @@ class Game {
       const artifactsStr =
         location.showArtifacts?.() ??
         (location.artifacts || []).map((a) => a.name).join(", ");
-
-      // players list (names). Always include the requester.
-      const playersArr = (location.players || [])
-        .filter(Boolean)
-        .map((p) => p.name)
-        .filter(Boolean);
-
-      if (forPlayer?.name && !playersArr.includes(forPlayer.name)) {
-        playersArr.unshift(forPlayer.name);
-      }
+      const players = location.showPlayers?.() || ["Just you"];
 
       return {
         description: d.description,
         exits: Array.isArray(d.exits) ? d.exits.join(", ") : d.exits,
         creatures: creaturesStr,
         artifacts: artifactsStr,
-        players: playersArr, // ← NEW
+        players,
         result: ""
       };
     } catch (error) {
@@ -139,12 +131,13 @@ class Game {
         location,
         player: {
           stats: p.getStatsObj(), // guaranteed function
-          classType: p.classType || p.playerClass || "",
-          inventory: p.showInventory?.() ?? p.inventory
+          classType: p.classType || p.playerClass || "Missing player class",
+          inventory: p.showInventory?.() ?? p.inventory,
+          changes: location.changes || "No changes"
         }
       };
       // dev log
-      console.log("[emit update]", JSON.stringify(payload.player, null, 2));
+      console.log("[emit update]", JSON.stringify(payload, null, 2));
       io.emit("update", payload);
     } catch (error) {
       throw new AppError(`Failed to emit callback. ${error}`, 400);

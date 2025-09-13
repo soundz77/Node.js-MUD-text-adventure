@@ -19,7 +19,7 @@ const checkSession = (req, res, next) => {
 
   // If playerName and playerClass are not available in session or req.body, render index
   return new AppError(
-    "PlayerName and PlayerClass are not available in session or req.body"
+    "PlayerName and/or PlayerClass are not available in session or req.body"
   );
 };
 
