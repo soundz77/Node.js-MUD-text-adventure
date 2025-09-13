@@ -4,13 +4,60 @@ import { stepWorld } from "./stepWorld.js";
 
 // Hold world-global mutable state here (or a class)
 export const worldState = {
-  tickMs: 1000,
+  tickMs: 3000,
   tickIndex: 0,
   seed: 0xa17c32f1, // store in DB/config
+
   // references to locations/NPCs/players you already have:
   locationsMap: null, // populated by Game.setup()
   npcs: new Map(),
-  lastBroadcasts: new Map() // for diffing
+  lastBroadcasts: new Map(), // for diffing
+
+  // ---- SPAWN CONFIG (caps, budgets, cooldowns)
+  spawn: {
+    npc: {
+      maxGlobal: 10, // hard global ceiling
+      maxPerRoom: 5, // hard per-room ceiling
+      spawnBudgetPerTick: 4, // never spawn more than this per tick
+      roomCooldownMs: 12_000, // per-room spawn cooldown
+      respawnMinMs: 20_000, // killed creatures reappear no earlier than this
+      respawnMaxMs: 60_000, // ...and no later than this
+      lastSpawnAtByRoom: new Map(), // roomName -> timestamp
+      respawnQueue: [] // [{when, roomName}]
+    },
+    item: {
+      maxGlobal: 200,
+      maxPerRoom: 4,
+      spawnBudgetPerTick: 3,
+      roomCooldownMs: 20_000,
+      lastSpawnAtByRoom: new Map()
+    }
+  },
+
+  // ---- STATS (top-level; used by stepWorld)
+  stats: {
+    lastLogAt: 0,
+    logEveryMs: 10_000, // print to console every 10s
+    emitEveryTicks: 10, // also emit into changes every N ticks
+
+    // rolling rates (EMA) per second
+    emaAlpha: 0.2,
+    ema: {
+      npcSpawnsPerSec: 0,
+      npcDeathsPerSec: 0,
+      itemSpawnsPerSec: 0
+    },
+
+    // counters for this tick window
+    tickCounters: {
+      npcSpawns: 0,
+      npcDeaths: 0,
+      itemSpawns: 0
+    },
+
+    // last tick timestamp
+    lastTickAt: 0
+  }
 };
 
 let intervalHandle = null;
@@ -73,8 +120,8 @@ function tickOnce() {
   const rnd = deriveTickRng(t);
 
   const changes = stepWorld(t, rnd) || []; // compact list of diffs
-  broadcastChanges(changes);
-  maybePersist(t, changes);
+  // console.log(changes);
+  // broadcastChanges(changes); // <- enable if clients are to get updates
 }
 
 function deriveTickRng(tick) {
@@ -84,13 +131,7 @@ function deriveTickRng(tick) {
 
 function broadcastChanges(changes) {
   if (!changes?.length) return;
-  // publish is injected by Game; no rooms here, socket layer decides how to route
   publish?.("world:changes", { tick: worldState.tickIndex, changes });
-}
-
-function maybePersist(_tick, _changes) {
-  // TODO: persist minimal state every N ticks if needed
-  // e.g., if (_tick % 10 === 0 && _changes.length) await persistChanges(...)
 }
 
 /** Optional: change tick interval on the fly (restarts loop) */
