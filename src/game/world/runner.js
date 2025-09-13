@@ -1,5 +1,4 @@
 // game/world/runner.js
-import { io } from "../../config/socketConfig.js";
 import { mulberry32, hash32 } from "./rng.js";
 import { stepWorld } from "./stepWorld.js";
 
@@ -17,12 +16,17 @@ export const worldState = {
 let intervalHandle = null;
 let startTimeout = null;
 
-/**
- * Start the continuous world loop (idempotent).
- * Aligns the first tick to the next tickMs boundary, like your original.
- */
+// transport-agnostic publisher (set by Game)
+let publish = null;
+
+/** Let the Game (or anyone) provide a network-agnostic publisher */
+export function setWorldPublisher(fn) {
+  publish = typeof fn === "function" ? fn : null;
+}
+
+/** Start the continuous world loop (idempotent). */
 export function startWorldLoop() {
-  if (intervalHandle || startTimeout) return; // idempotent
+  if (intervalHandle || startTimeout) return;
 
   const now = Date.now();
   const offset = worldState.tickMs - (now % worldState.tickMs);
@@ -30,17 +34,16 @@ export function startWorldLoop() {
   startTimeout = setTimeout(() => {
     startTimeout = null;
     intervalHandle = setInterval(tickOnceSafe, worldState.tickMs);
-    // optional: let other closers terminate the process without waiting on this timer
-    intervalHandle.unref?.();
-    tickOnceSafe(); // run immediately at first boundary
+    intervalHandle?.unref?.();
+    tickOnceSafe();
     console.log(
-      `[world] loop started @ ${new Date().toISOString()} (tickMs=${
+      `World loop started @ ${new Date().toISOString()} (tickMs=${
         worldState.tickMs
       })`
     );
   }, offset);
 
-  startTimeout.unref?.();
+  startTimeout?.unref?.();
 }
 
 /** Stop the world loop (graceful shutdown). */
@@ -69,9 +72,9 @@ function tickOnce() {
   const t = ++worldState.tickIndex;
   const rnd = deriveTickRng(t);
 
-  const changes = stepWorld(t, rnd) || []; // returns a compact list of diffs
-  broadcastChanges(changes); // only if anyone connected
-  maybePersist(t, changes); // small, idempotent writes
+  const changes = stepWorld(t, rnd) || []; // compact list of diffs
+  broadcastChanges(changes);
+  maybePersist(t, changes);
 }
 
 function deriveTickRng(tick) {
@@ -81,15 +84,22 @@ function deriveTickRng(tick) {
 
 function broadcastChanges(changes) {
   if (!changes?.length) return;
-  // Guard if io isn’t ready yet (e.g., during startup/shutdown)
-  if (!io || !io.to) return;
-  io.to("world").emit("world:changes", { tick: worldState.tickIndex, changes });
+  // publish is injected by Game; no rooms here, socket layer decides how to route
+  publish?.("world:changes", { tick: worldState.tickIndex, changes });
 }
 
-function maybePersist(tick, changes) {
-  // Persist minimal things you can’t recompute:
-  //   - NPC positions, new spawns, deaths, dropped items, weather state
-  // Batch writes; every 10 ticks is often enough.
-  // Example (pseudo):
-  // if (tick % 10 === 0 && changes.length) persistChanges(tick, changes).catch(console.error);
+function maybePersist(_tick, _changes) {
+  // TODO: persist minimal state every N ticks if needed
+  // e.g., if (_tick % 10 === 0 && _changes.length) await persistChanges(...)
+}
+
+/** Optional: change tick interval on the fly (restarts loop) */
+export function setTickMs(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return;
+  worldState.tickMs = n;
+  if (intervalHandle || startTimeout) {
+    stopWorldLoop();
+    startWorldLoop();
+  }
 }
