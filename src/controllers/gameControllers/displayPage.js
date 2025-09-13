@@ -1,7 +1,8 @@
 // routes/displayPage.js
-import game from "../../game/startGame.js";
+import { getGame } from "../../game/startGame.js";
 
 export default function displayPage(req, res) {
+  const game = getGame();
   const loc = game.getLocationData(game.player.currentLocation);
   const player = {
     name: req.session.playerName,
