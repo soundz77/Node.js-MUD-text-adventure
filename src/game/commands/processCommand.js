@@ -6,29 +6,14 @@ import equip from "./equip/equip.js";
 import putArtifact from "./put/putArtifact.js";
 import gameMessages from "../gameData/gameMessages.js";
 
-const processCommand = (game, command) => {
+const runCommand = (game, command) => {
   // 0) Normalize input (accept string or {text})
   const raw =
     typeof command === "string" ? command : (command && command.text) || "";
   const input = String(raw).trim();
 
-  // 1) If empty -> emit full snapshot with message and return
-  if (!input) {
-    const loc = game.getLocationData(game.player.currentLocation);
-    loc.result = gameMessages.unknownCommand;
-    game.emitCallback(loc); // emit from canonical player
-    return;
-  }
+  let location = {};
 
-  // 2) Parse
-  const [verbRaw, ...args] = input.split(/\s+/);
-  const action = (verbRaw || "").toLowerCase();
-  const params = args.join(" ").trim();
-
-  // 3) Local state buckets (DECLARE BEFORE ANY USE!)
-  let location = {}; // ← declare early to avoid TDZ
-
-  // Helper uses the outer `location` (safe now)
   function updateLocationWithLocationData() {
     const locData = game.getLocationData(
       game.player.currentLocation,
@@ -36,6 +21,18 @@ const processCommand = (game, command) => {
     );
     location = updateLocationAndPlayer(location, locData);
   }
+
+  // 1) If empty -> emit full snapshot with message and return
+  if (!input) {
+    const loc = game.getLocationData(game.player.currentLocation);
+    loc.result = gameMessages.unknownCommand;
+    return { message: loc.result, location: loc };
+  }
+
+  // 2) Parse
+  const [verbRaw, ...args] = input.split(/\s+/);
+  const action = (verbRaw || "").toLowerCase();
+  const params = args.join(" ").trim();
 
   const commands = {
     eat: (p) => {
@@ -67,7 +64,6 @@ const processCommand = (game, command) => {
       updateLocationWithLocationData();
     },
     health: () => {
-      // human-readable stats line into message area; UI bars update via snapshot
       location.result = game.player.getStats?.() || "";
       updateLocationWithLocationData();
     },
@@ -81,13 +77,11 @@ const processCommand = (game, command) => {
       updateLocationWithLocationData();
     },
     inventory: () => {
-      // just refresh snapshot; UI shows inventory from emitCallback payload
       updateLocationWithLocationData();
     },
     examine: (p) => {
       const res = game.player.examine(String(p || "").toLowerCase());
       location.result = res?.message || "";
-      // optionally attach structured payload
       if (res && typeof res === "object") {
         location.inspect = {
           kind: res.kind,
@@ -132,8 +126,7 @@ const processCommand = (game, command) => {
     updateLocationWithLocationData();
   }
 
-  // Emit from authoritative state (no draft player objects)
-  game.emitCallback(location);
+  return { message: location.result ?? "", location };
 };
 
-export default processCommand;
+export default runCommand;
