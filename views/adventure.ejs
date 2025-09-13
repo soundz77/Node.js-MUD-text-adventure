@@ -4,27 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Adventure</title>
+
     <meta
       http-equiv="Content-Security-Policy"
       content="
-    default-src 'self';
-    script-src 'self' https://cdn.socket.io 'unsafe-inline' 'unsafe-eval';
-    style-src 'self' 'unsafe-inline';
-    connect-src 'self' ws: wss:;
-  "
+        default-src 'self';
+        script-src 'self' https://cdn.socket.io;
+        style-src 'self' 'unsafe-inline';
+        connect-src 'self' ws: wss:;
+      "
     />
 
-    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="stylesheet" type="text/css" href="/style.css" />
   </head>
-  <body>
+  <body data-player-name="<%= player.name %>">
     <div class="container">
       <div class="navbar">
         <h1>Welcome <%= player.name %>!</h1>
         <p>
-          A level <span id="level"><%= player.stats.level %> </span> <%=
-          player.class %>. Good luck on your journey!
+          A level <span id="level"><%= player.stats.level %></span>
+          <%= player.class %>. Good luck on your journey!
         </p>
       </div>
+
       <div class="content">
         <div class="left-sidebar">
           <h2>Player Stats</h2>
@@ -41,6 +43,7 @@
               </div>
               <span id="health"><%= player.stats.health %></span>
             </div>
+
             <div class="stat">
               <span class="stat-label">Stamina:</span>
               <div class="stat-bar">
@@ -64,6 +67,7 @@
               </div>
               <span id="strength"><%= player.stats.strength %></span>
             </div>
+
             <h3>Secondary stats</h3>
             <div class="stat">
               <span class="stat-label">Defence:</span>
@@ -76,6 +80,7 @@
               </div>
               <span id="defence"><%= player.stats.defence %></span>
             </div>
+
             <div class="stat">
               <span class="stat-label">Attack:</span>
               <div class="stat-bar">
@@ -87,6 +92,7 @@
               </div>
               <span id="attack"><%= player.stats.attack %></span>
             </div>
+
             <div class="stat">
               <span class="stat-label">Experience:</span>
               <div class="stat-bar">
@@ -99,51 +105,61 @@
               <span id="experience"><%= player.stats.experience %></span>
             </div>
           </div>
+
           <h2 id="inventory-list">
-            <% if (player.inventory) { %>Your inventory: <%= player.inventory
-            %><% } %>
+            <% if (player.inventory) { %> Your inventory: <%= player.inventory
+            %> <% } %>
           </h2>
         </div>
+
         <div class="main-content">
           <div class="left-column">
             <p>You are here:</p>
             <h2 id="location">
-              <% if (location && location.description) { %><%=
-              location.description %><% } %>
+              <% if (location && location.description) { %> <%=
+              location.description %> <% } %>
             </h2>
-            <h2 id="Players"></h2>
+
+            <h2 id="players"></h2>
+
             <h2 id="locationExits">
-              <% if (location && location.exits) { %>Exits: <%= location.exits
-              %><% } %>
+              <% if (location && location.exits) { %> Exits: <%= location.exits
+              %> <% } %>
             </h2>
 
             <h2 id="creatures">
               <% if (location && location.creatures && location.creatures.length
-              > 0) { %>Monsters: <%= location.creatures %><% } %>
+              > 0) { %> Monsters: <%= location.creatures %> <% } %>
             </h2>
+
             <h2 id="artifacts">
               <% if (location && location.artifacts && location.artifacts.length
-              > 0) { %>Artifacts: <%= location.artifacts %><% } %>
+              > 0) { %> Artifacts: <%= location.artifacts %> <% } %>
             </h2>
+
             <form id="command-form">
               <label for="command">Enter command:</label>
               <input type="text" id="command" name="command" required />
               <button type="submit">Submit</button>
             </form>
+
             <div>
               <h2 id="message-list"></h2>
             </div>
           </div>
+
           <div class="right-column">
-            <div id="chat">
-              <h3>Chat</h3>
-              <ul id="messages"></ul>
+            <!-- World Chat box -->
+            <div id="world-chat" class="panel">
+              <h3>World Chat</h3>
+              <ul id="world-messages"></ul>
               <form id="chat-form">
                 <input id="message" autocomplete="off" />
                 <button>Send</button>
               </form>
             </div>
-            <div>
+
+            <div class="panel">
               <h2>Kills:</h2>
               <div id="kills"></div>
             </div>
@@ -151,204 +167,13 @@
         </div>
       </div>
     </div>
-    <!-- Socket.IO library -->
+
+    <!-- Socket.IO library (CDN) -->
     <script
       src="https://cdn.socket.io/4.8.1/socket.io.min.js"
       crossorigin="anonymous"
     ></script>
-    <script>
-      const socket = io({ path: "/socket.io" }); // no transports override
-      let seq = 1;
-
-      // DOM cache
-      const els = {
-        form: document.getElementById("command-form"),
-        cmd: document.getElementById("command"),
-        msgList: document.getElementById("message-list"),
-        location: document.getElementById("location"),
-        exits: document.getElementById("locationExits"),
-        creatures: document.getElementById("creatures"),
-        artifacts: document.getElementById("artifacts"),
-        players: document.getElementById("players"),
-        kills: document.getElementById("kills"),
-        level: document.getElementById("level"),
-        inv: document.getElementById("inventory-list"),
-        players: document.getElementById("players"),
-        bars: {
-          health: {
-            span: document.getElementById("health"),
-            bar: document.getElementById("health-bar")
-          },
-          stamina: {
-            span: document.getElementById("stamina"),
-            bar: document.getElementById("stamina-bar")
-          },
-          strength: {
-            span: document.getElementById("strength"),
-            bar: document.getElementById("strength-bar")
-          },
-          defence: {
-            span: document.getElementById("defence"),
-            bar: document.getElementById("defence-bar")
-          },
-          attack: {
-            span: document.getElementById("attack"),
-            bar: document.getElementById("attack-bar")
-          },
-          experience: {
-            span: document.getElementById("experience"),
-            bar: document.getElementById("experience-bar")
-          }
-        },
-        chat: {
-          form: document.getElementById("chat-form"),
-          input: document.getElementById("message"),
-          ul: document.getElementById("messages")
-        }
-      };
-
-      // Structured logging
-      const logEmit = (ev, data) =>
-        console.debug("[SOCKET→]", ev, JSON.stringify(data, null, 2));
-      const logRecv = (ev, data) =>
-        console.debug("[SOCKET←]", ev, JSON.stringify(data, null, 2));
-
-      socket.on("connect", () => console.log("Connected:", socket.id));
-      socket.on("disconnect", (r) => console.warn("Disconnected:", r));
-
-      // Send command
-      els.form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const text = els.cmd.value.trim();
-        if (!text) return;
-        const id = seq++;
-        const payload = { id, text };
-        els.msgList.textContent = "> " + text;
-        logEmit("processCommand", payload);
-        socket.emit("processCommand", payload);
-        els.cmd.value = "";
-      });
-
-      // Send chat
-      els.chat.form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const playerName = "<%= player.name %>";
-        const text = els.chat.input.value.trim();
-        if (!text) return;
-        const msg = `${playerName}: ${text}`;
-        logEmit("chatMessage", msg);
-        socket.emit("chatMessage", msg);
-        els.chat.input.value = "";
-      });
-
-      // Batch updates
-      const queue = [];
-      socket.on("update", (payload) => {
-        logRecv("update", payload);
-        queue.push(payload);
-      });
-      socket.on("chatMessage", (msg) => {
-        logRecv("chatMessage", msg);
-        queue.push({ _chat: msg });
-      });
-
-      // Helpers
-      function clamp01(v) {
-        const n = Number(v);
-        return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
-      }
-      function setBar(which, value) {
-        const el = els.bars[which];
-        if (!el) return;
-        const v = clamp01(value);
-        el.span.textContent = v;
-        el.bar.style.width = v + "%";
-      }
-      const listify = (arr) =>
-        Array.isArray(arr) ? arr.join(", ") : arr ?? "";
-
-      const MAX_CHAT = 200;
-      const SELF_NAME = "<%= player.name %>".toLowerCase(); // 👈 used to filter self if server includes it
-
-      function apply(payload) {
-        const SELF_NAME = "<%= player.name %>".toLowerCase();
-
-        // Chat
-        if (payload._chat != null) {
-          const li = document.createElement("li");
-          li.textContent = payload._chat;
-          els.chat.ul.appendChild(li);
-          while (els.chat.ul.children.length > MAX_CHAT)
-            els.chat.ul.removeChild(els.chat.ul.firstChild);
-          return;
-        }
-
-        const { player, location } = payload || {};
-
-        // Location section
-        if (location) {
-          if (location.result != null)
-            els.msgList.textContent = location.result;
-          if (location.message != null)
-            els.msgList.textContent = location.message; // legacy
-          if (location.description != null)
-            els.location.textContent = location.description;
-          if (location.exits != null)
-            els.exits.textContent = "Exits: " + listify(location.exits);
-
-          els.creatures.textContent =
-            location.creatures && location.creatures.length
-              ? "Monsters: " + listify(location.creatures)
-              : "";
-
-          els.artifacts.textContent =
-            location.artifacts && location.artifacts.length
-              ? "Artifacts: " + listify(location.artifacts)
-              : "";
-
-          // Show players present (always show "you" at minimum)
-          if (Array.isArray(location.players) && els.players) {
-            const names = location.players.map((n) => {
-              const s = String(n);
-              return s.toLowerCase() === SELF_NAME ? "you" : s;
-            });
-            els.players.textContent = "Players: " + (names.join(", ") || "you");
-          }
-        }
-
-        // Player (stats-only)
-        if (player && player.stats) {
-          const S = player.stats;
-          if ("health" in S) setBar("health", S.health);
-          if ("stamina" in S) setBar("stamina", S.stamina);
-          if ("strength" in S) setBar("strength", S.strength);
-          if ("defence" in S) setBar("defence", S.defence);
-          if ("attack" in S) setBar("attack", S.attack);
-          if ("experience" in S) setBar("experience", S.experience);
-          if ("kills" in S) els.kills.textContent = S.kills;
-          if ("level" in S) els.level.textContent = S.level;
-        }
-
-        // Inventory string/list
-        if (player && "inventory" in player && player.inventory != null) {
-          els.inv.innerHTML = "Your inventory: " + listify(player.inventory);
-        }
-      }
-
-      function frame() {
-        if (queue.length) {
-          const items = queue.splice(0, queue.length);
-          for (const p of items) apply(p);
-        }
-        requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
-
-      // Mobile input niceties
-      els.cmd.setAttribute("autocapitalize", "off");
-      els.cmd.setAttribute("autocorrect", "off");
-      els.cmd.setAttribute("spellcheck", "false");
-      els.cmd.setAttribute("inputmode", "text");
-    </script>
+    <!-- Your client bundle -->
+    <script src="/js/client.js"></script>
   </body>
 </html>
