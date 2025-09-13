@@ -6,7 +6,6 @@ import logger from "./utils/logging/logger.js";
 import serverMessages from "./utils/logging/messages/serverMessages.js";
 import asyncMessages from "./utils/logging/messages/asyncMessages.js";
 import checkVarsSet from "./utils/validation/checkVarsSet.js";
-import { io } from "../../src/config/socketConfig.js";
 
 let server;
 
@@ -50,15 +49,6 @@ const handleServerError = (err) => {
   }
 };
 
-const handleShutdown = () => {
-  io.close(() => console.log("Socket server closed"));
-  logger.info(serverMessages.success.shutdown);
-  server.close(() => {
-    logger.info(serverMessages.success.shutdown);
-    process.exit(0);
-  });
-};
-
 const handleUncaughtException = (err) => {
   logger.error(`${asyncMessages.uncaughtException} ${err}`);
   process.exit(1);
@@ -72,24 +62,25 @@ const handleUnhandledRejection = (err) => {
 const setupProcessHandlers = () => {
   process.on("uncaughtException", handleUncaughtException);
   process.on("unhandledRejection", handleUnhandledRejection);
-  process.on("SIGTERM", handleShutdown);
-  process.on("SIGINT", handleShutdown);
 };
 
-const setupServer = (app) => {
+const setupServer = async (app) => {
   // Check required variables before starting the server
   checkRequiredVars();
+  setupProcessHandlers();
 
   // Start the server
-  server = app.listen(env.PORT, () => {
-    logger.info(serverMessages.success.startup);
+  server = await new Promise((resolve, reject) => {
+    const s = app
+      .listen(env.PORT, () => {
+        logger.info(serverMessages.success.startup);
+        resolve(s);
+      })
+      .on("error", reject);
   });
 
   // Handle server errors
   server.on("error", handleServerError);
-
-  // Set up process handlers
-  setupProcessHandlers();
 };
 
 export default setupServer;

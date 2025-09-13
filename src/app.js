@@ -1,35 +1,32 @@
-// import "dotenv/config";
-// import express from "express";
-
-// import http from "http";
-// import serverConfig from "./config/serverConfig.js";
-// import configureMiddleware from "./config/configureMiddleware.js";
-// import configureRoutes from "./config/configureRoutes.js";
-// import configureMongoose from "./config/configureMongoose.js";
-
-// const app = express();
-
-import handleAsync from "express-async-handler";
 import setupApp from "../base-template/src/app.js";
-// import configureMongoose from "./config/configureMongoose.js";
-import setupServer from "../base-template/src/server.js";
-import { server } from "../base-template/src/server.js";
-import { socketConfig } from "./config/socketConfig.js";
+// import setupServer from "../base-template/src/server.js";
+import http from "http";
+import socketConfig from "./config/socketConfig.js";
 import configureAppMiddleware from "./config/configureAppMiddleware.js";
 import configureRoutes from "./config/configureRoutes.js";
 import globalErrorHandler from "../base-template/src/utils/errors/globalErrorHandler.js";
-import { startWorldLoop } from "./game/world/runner.js";
+import { startGame } from "./game/startGame.js";
 
-const main = handleAsync(async () => {
-  const app = setupApp(); // Initialize the base-template app
+const main = async () => {
+  const app = setupApp(); // Initialise the base-template app
+  const server = http.createServer(app);
+  const game = startGame();
+  const io = socketConfig(server, { game });
 
-  await setupServer(app);
-  await socketConfig(server);
-  await configureAppMiddleware(app);
+  configureAppMiddleware(app);
   configureRoutes(app);
 
+  game.setPublisher((ev, p) => io.emit(ev, p));
+  await new Promise((res) => server.listen(3000, res));
+
   app.use(globalErrorHandler);
-  startWorldLoop();
-});
+
+  const shutdown = () => {
+    io.close(() => console.log("Socket server closed"));
+    server.close(() => process.exit(0));
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+};
 
 main();
