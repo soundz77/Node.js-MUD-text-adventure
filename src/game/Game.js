@@ -10,7 +10,7 @@ import {
   startWorldLoop,
   setWorldPublisher
 } from "../game/world/runner.js";
-import runCommand from "./commands/processCommand.js";
+import runCommand from "./commands/runCommand.js";
 
 class Game {
   constructor() {
@@ -163,10 +163,12 @@ class Game {
   processCommand(command) {
     try {
       // mutate game state according to the command
-      const { message } = runCommand(this, command);
+      const { message, location } = runCommand(this, command);
 
       // after state change, broadcast the current snapshot
       const payload = this.buildUpdatePayload(this.player.currentLocation);
+      payload.result = message; // Include the result of the action
+      payload.location = location; // Include structured location
       this.broadcast("update", payload);
 
       // return a message for the *requesting socket* to show
