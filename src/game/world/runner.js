@@ -1,4 +1,3 @@
-// game/world/runner.js
 import { mulberry32, hash32 } from "./rng.js";
 import { stepWorld } from "./stepWorld.js";
 
@@ -42,18 +41,10 @@ export const worldState = {
 
     // rolling rates (EMA) per second
     emaAlpha: 0.2,
-    ema: {
-      npcSpawnsPerSec: 0,
-      npcDeathsPerSec: 0,
-      itemSpawnsPerSec: 0
-    },
+    ema: { npcSpawnsPerSec: 0, npcDeathsPerSec: 0, itemSpawnsPerSec: 0 },
 
     // counters for this tick window
-    tickCounters: {
-      npcSpawns: 0,
-      npcDeaths: 0,
-      itemSpawns: 0
-    },
+    tickCounters: { npcSpawns: 0, npcDeaths: 0, itemSpawns: 0 },
 
     // last tick timestamp
     lastTickAt: 0
@@ -63,12 +54,24 @@ export const worldState = {
 let intervalHandle = null;
 let startTimeout = null;
 
-// transport-agnostic publisher (set by Game)
-let publish = null;
+// --- transport-agnostic publishers (set by Game/server) ---
+let publish = null; // (event, payload) -> void   [global]
+let publishToRoom = null; // (roomId, event, payload, {onlyIfOccupied}) -> void
+let isRoomOccupied = null; // (roomId) -> boolean
 
 /** Let the Game (or anyone) provide a network-agnostic publisher */
 export function setWorldPublisher(fn) {
   publish = typeof fn === "function" ? fn : null;
+}
+
+/** Provide a room-scoped publisher (e.g. socket.io io.to(`room:${id}`)) */
+export function setRoomPublisher(fn) {
+  publishToRoom = typeof fn === "function" ? fn : null;
+}
+
+/** Provide an occupancy checker so we can skip empty rooms cheaply */
+export function setRoomOccupancyChecker(fn) {
+  isRoomOccupied = typeof fn === "function" ? fn : null;
 }
 
 /** Start the continuous world loop (idempotent). */
@@ -120,8 +123,12 @@ function tickOnce() {
   const rnd = deriveTickRng(t);
 
   const changes = stepWorld(t, rnd) || []; // compact list of diffs
-  // console.log(changes);
-  // broadcastChanges(changes); // <- enable if clients are to get updates
+
+  // NEW: room-targeted dispatch (only to occupied rooms if possible)
+  dispatchWorldChanges(changes);
+
+  // Optional: global broadcast of raw changes (admin/debug)
+  // broadcastChanges(changes);
 }
 
 function deriveTickRng(tick) {
@@ -142,5 +149,78 @@ export function setTickMs(ms) {
   if (intervalHandle || startTimeout) {
     stopWorldLoop();
     startWorldLoop();
+  }
+}
+
+/* ------------------ NEW: room-targeted dispatcher ------------------ */
+
+function roomEmit(roomId, event, payload, { onlyIfOccupied = true } = {}) {
+  if (roomId == null || !publishToRoom) return;
+  if (onlyIfOccupied && typeof isRoomOccupied === "function") {
+    if (!isRoomOccupied(roomId)) return;
+  }
+  publishToRoom(roomId, event, payload, { onlyIfOccupied });
+}
+
+function cap(s) {
+  return (s && s[0]?.toUpperCase() + s.slice(1)) || s || "";
+}
+
+/** Turn stepWorld diffs into player-facing emits, per room */
+function dispatchWorldChanges(changes) {
+  if (!Array.isArray(changes) || changes.length === 0) return;
+
+  for (const ch of changes) {
+    switch (ch.t) {
+      // Spawns
+      case "spawn":
+        if (ch.kind === "creature") {
+          roomEmit(ch.roomId, "player:message", {
+            message: `${cap(ch.npcName)} appears.`
+          });
+        } else if (ch.kind === "artifact") {
+          roomEmit(ch.roomId, "player:message", {
+            message: `An item shimmers into view: ${ch.artifactName}.`
+          });
+        }
+        break;
+
+      // Movement (enter/leave already tagged with roomId)
+      case "roomNpcEnter":
+        roomEmit(ch.roomId, "player:message", {
+          message: `${cap(ch.npcName)} entered from the ${ch.dir}.`
+        });
+        break;
+
+      case "roomNpcLeave":
+        roomEmit(ch.roomId, "player:message", {
+          message: `${cap(ch.npcName)} left to the ${ch.dir}.`
+        });
+        break;
+
+      // Skirmishes / deaths
+      case "npcSkirmish":
+        roomEmit(ch.roomId, "player:message", {
+          message: `You hear fighting nearby.`,
+          // optional: also feed a room "changes" list if your client renders it
+          location: { changes: [`Skirmish (${ch.dmgA}/${ch.dmgB} dmg).`] }
+        });
+        break;
+
+      case "npcDeath":
+        roomEmit(ch.roomId, "player:message", {
+          message: `A creature collapses.`
+        });
+        break;
+
+      // (Optional) aggregate to everyone/admin UI
+      case "worldStats":
+        publish?.("world:stats", ch);
+        break;
+
+      default:
+        // ignore other diff types or add more as needed
+        break;
+    }
   }
 }

@@ -163,7 +163,7 @@
               <h3>World Chat</h3>
               <ul id="world-messages"></ul>
               <form id="chat-form">
-                <input id="chat-form" autocomplete="off" />
+                <input id="chat-input" autocomplete="off" />
                 <button>Send</button>
               </form>
             </div>
@@ -177,12 +177,10 @@
       </div>
     </div>
 
-    <!-- Socket.IO library (CDN) -->
     <script
       src="https://cdn.socket.io/4.8.1/socket.io.min.js"
       crossorigin="anonymous"
     ></script>
-    <!-- Your client bundle -->
     <script src="/js/client.js"></script>
   </body>
 </html>

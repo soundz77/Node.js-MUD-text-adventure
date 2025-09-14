@@ -34,7 +34,7 @@ class Player extends Character {
       name: this.name,
       class: this.playerClass,
       stats: this.stats,
-      experience: this.stats.experience
+      xperience: this.stats.experience
     };
   }
 

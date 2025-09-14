@@ -3,9 +3,9 @@
 
 export const gameData = {
   counts: {
-    locations: 50,
-    creatures: 100,
-    artifacts: 30
+    locations: 5,
+    creatures: 20,
+    artifacts: 5
   },
   odds: {
     creatureInLocation: 0.9,

@@ -44,22 +44,35 @@ export function stepWorld(tick, rnd) {
       const dir = pick(rnd, ["north", "south", "east", "west"]);
       const moved = tryMoveNpc(npc, dir);
       if (moved) {
-        const fromName = moved.from?.name ?? "(nowhere)";
-        const toName = moved.to?.name ?? "(nowhere)";
-        changes.push({ t: "npcMove", id: npc.id, from: fromName, to: toName });
+        const from = moved.from,
+          to = moved.to;
+        const fromName = roomNameOf(from),
+          toName = roomNameOf(to);
+        const fromId = roomIdOf(from),
+          toId = roomIdOf(to);
+        changes.push({
+          t: "npcMove",
+          id: npc.id,
+          fromId,
+          toId,
+          from: fromName,
+          to: toName
+        });
         changes.push({
           t: "roomNpcLeave",
+          roomId: fromId,
           room: fromName,
           npcId: npc.id,
           npcName: npc.name || npc.kind || npc.id,
-          fromDir: dir
+          dir
         });
         changes.push({
           t: "roomNpcEnter",
+          roomId: toId,
           room: toName,
           npcId: npc.id,
           npcName: npc.name || npc.kind || npc.id,
-          fromDir: dir
+          dir: oppositeDir(dir)
         });
       }
     }
@@ -165,6 +178,14 @@ function nowMs() {
 function roomNameOf(loc) {
   return loc?.name ?? "(unnamed)";
 }
+function roomIdOf(loc) {
+  return loc?.id ?? null;
+}
+function oppositeDir(dir) {
+  return (
+    { north: "south", south: "north", east: "west", west: "east" }[dir] ?? dir
+  );
+}
 
 function shuffledRooms(rnd) {
   const rooms = Array.from(worldState.locationsMap.values());
@@ -262,6 +283,7 @@ function boundedSpawns(rnd, changes) {
             t: "spawn",
             kind: "creature",
             id: c.id,
+            roomId: roomIdOf(loc),
             at: roomNameOf(loc),
             npcName: c.name || c.kind || c.id
           });
@@ -279,15 +301,16 @@ function boundedSpawns(rnd, changes) {
 
           if (rnd() < 0.5) {
             // randomness keeps it huntable
-            const c = spawnRandomCreatureAt(loc, rnd);
-            if (c) {
+            const a = spawnRandomCreatureAt(loc, rnd);
+            if (a) {
               markRoomSpawned(C, loc, t);
               changes.push({
                 t: "spawn",
-                kind: "creature",
-                id: c.id,
+                kind: "artifact",
+                id: a.id,
+                roomId: roomIdOf(loc),
                 at: roomNameOf(loc),
-                npcName: c.name || c.kind || c.id
+                artifactName: a.name || a.kind || a.id
               });
               budget--;
             }
@@ -357,6 +380,7 @@ function npcVsNpcSkirmishes(rnd, changes) {
         t: "npcSkirmish",
         a: A.id,
         b: B.id,
+        roomId: roomIdOf(loc),
         room: roomNameOf(loc),
         dmgA,
         dmgB
@@ -364,12 +388,22 @@ function npcVsNpcSkirmishes(rnd, changes) {
 
       if (A.stats.health <= 0) {
         removeNpc(A, loc);
-        changes.push({ t: "npcDeath", id: A.id, room: roomNameOf(loc) });
+        changes.push({
+          t: "npcDeath",
+          id: A.id,
+          roomId: roomIdOf(loc),
+          room: roomNameOf(loc)
+        });
         scheduleNpcRespawn(roomNameOf(loc), rnd);
       }
       if (B.stats.health <= 0) {
         removeNpc(B, loc);
-        changes.push({ t: "npcDeath", id: B.id, room: roomNameOf(loc) });
+        changes.push({
+          t: "npcDeath",
+          id: B.id,
+          roomId: roomIdOf(loc),
+          room: roomNameOf(loc)
+        });
         scheduleNpcRespawn(roomNameOf(loc), rnd);
       }
     }
@@ -437,7 +471,9 @@ function tryMoveNpc(npc, dir) {
   if (!neighborKey) return null;
 
   const there =
-    typeof neighborKey === "string"
+    typeof neighborKey === "number"
+      ? worldState.locationsMap.get(neighborKey)
+      : typeof neighborKey === "string"
       ? worldState.locationsMap.get(neighborKey) || findByName(neighborKey)
       : neighborKey;
 
