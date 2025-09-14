@@ -82,8 +82,7 @@ class Character {
   getStatsObj() {
     return {
       ...this.stats,
-      kills: this.killCount,
-      classType: this.classType
+      kills: this.killCount
     };
   }
 

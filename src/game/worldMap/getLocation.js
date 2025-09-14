@@ -1,5 +1,5 @@
-const getLocation = (locationsMap, name) => {
-  return locationsMap.get(name) || null;
+const getLocation = (locationsMap, id) => {
+  return locationsMap.get(id) || null;
 };
 
 export default getLocation;

@@ -6,6 +6,11 @@ import equip from "./equip/equip.js";
 import putArtifact from "./put/putArtifact.js";
 import gameMessages from "../gameData/gameMessages.js";
 
+/*
+location.result = result of an action by current player
+location.message = auto updates, NPCs, other players etc 
+  */
+
 const runCommand = (game, command) => {
   // 0) Normalize input (accept string or {text})
   const raw =
@@ -15,10 +20,7 @@ const runCommand = (game, command) => {
   let location = {};
 
   function updateLocationWithLocationData() {
-    const locData = game.getLocationData(
-      game.player.currentLocation,
-      game.player
-    );
+    const locData = game.getLocationData(game.player.currentLocation);
     location = updateLocationAndPlayer(location, locData);
   }
 
@@ -26,7 +28,7 @@ const runCommand = (game, command) => {
   if (!input) {
     const loc = game.getLocationData(game.player.currentLocation);
     loc.result = gameMessages.unknownCommand;
-    return { message: loc.result, location: loc };
+    return { loc };
   }
 
   // 2) Parse
@@ -60,7 +62,7 @@ const runCommand = (game, command) => {
     },
     attack: (p) => {
       const res = attackCreature(game, p);
-      location.result = res?.message || "attackResult.message missing";
+      location.result = res?.result || "attackResult.message missing";
       updateLocationWithLocationData();
     },
     health: () => {

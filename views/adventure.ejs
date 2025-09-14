@@ -115,13 +115,19 @@
         <div class="main-content">
           <div class="left-column">
             <p>You are here:</p>
-            <h2 id="location">
+            <h2 id="name">
+              <% if (location && location.name) { %> <%= location.name %> <% }
+              %>
+            </h2>
+            <h3 id="description">
               <% if (location && location.description) { %> <%=
               location.description %> <% } %>
+            </h3>
+
+            <h2 id="players">
+              <% if (location && location.players) { %> Players: <%=
+              location.players %> <% } %>
             </h2>
-
-            <h2 id="players"></h2>
-
             <h2 id="locationExits">
               <% if (location && location.exits) { %> Exits: <%= location.exits
               %> <% } %>
@@ -144,7 +150,10 @@
             </form>
 
             <div>
-              <h2 id="message-list"></h2>
+              <h2 id="message"></h2>
+
+              <% if (location && location.message) { %> <%= location.message %>
+              <% } %>
             </div>
           </div>
 
@@ -154,7 +163,7 @@
               <h3>World Chat</h3>
               <ul id="world-messages"></ul>
               <form id="chat-form">
-                <input id="message" autocomplete="off" />
+                <input id="chat-form" autocomplete="off" />
                 <button>Send</button>
               </form>
             </div>

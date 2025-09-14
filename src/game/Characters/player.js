@@ -31,13 +31,10 @@ class Player extends Character {
   // Always read from stats only
   getPlayerDetails() {
     return {
-      playerName: this.name,
-      playerClass: this.playerClass,
-      playerHealth: this.stats.health,
-      playerAttack: this.stats.attack,
-      playerStamina: this.stats.stamina,
-      playerLevel: this.stats.level,
-      playerExperience: this.stats.experience
+      name: this.name,
+      class: this.playerClass,
+      stats: this.stats,
+      experience: this.stats.experience
     };
   }
 

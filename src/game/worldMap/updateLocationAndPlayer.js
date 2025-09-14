@@ -1,9 +1,11 @@
 const updateLocationAndPlayer = (location, locationData) => {
-  location.description = locationData.description;
-  location.exits = locationData.exits;
-  location.creatures = locationData.creatures;
-  location.artifacts = locationData.artifacts;
-  return location;
+  return {
+    ...location,
+    description: locationData.description,
+    exits: locationData.exits,
+    creatures: locationData.creatures,
+    artifacts: locationData.artifacts
+  };
 };
 
 export default updateLocationAndPlayer;

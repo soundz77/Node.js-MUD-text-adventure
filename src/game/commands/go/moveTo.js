@@ -1,6 +1,9 @@
 import AppError from "../../../../base-template/src/utils/errors/AppError.js";
 import Location from "../../Locations/location.js";
 
+// Update this to move anything, not just players
+// Also create a higher class for gamePieces and use it for players, characters, items, NPCs as all have some functions in common
+
 const moveTo = (player, location) => {
   if (!(location instanceof Location)) {
     throw new AppError(`Invalid location object passed to moveTo`, 400);

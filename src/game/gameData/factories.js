@@ -78,8 +78,9 @@ export function createCreatureFromBlueprint(bp) {
   c.blueprintId = bp.id;
   if (bp.baseXP != null) c.baseXP = bp.baseXP;
 
-  // id is assigned later (e.g., in spawn), or do it here if you prefer:
-  // c.id = crypto.randomUUID?.() ?? `cre-${Date.now()}-${Math.random()*1e6|0}`;
+  // Assign an ID
+  c.id =
+    crypto.randomUUID?.() ?? `cre-${Date.now()}-${(Math.random() * 1e6) | 0}`;
 
   return c;
 }

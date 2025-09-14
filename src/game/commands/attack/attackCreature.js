@@ -7,12 +7,12 @@ import gameMessages from "../../gameData/gameMessages.js";
 
 const attackCreature = (game, creatureName) => {
   try {
-    let message = "";
+    let result = "";
     let player = {};
 
     if (!creatureName) {
-      message = gameMessages.attackNothing;
-      return { message, player };
+      result = gameMessages.attackNothing;
+      return { result, player };
     }
 
     const creaturesInLocation = game.player.currentLocation?.creatures || [];
@@ -21,8 +21,8 @@ const attackCreature = (game, creatureName) => {
     );
 
     if (!target) {
-      message = gameMessages.noSuchCreatureFound;
-      return { message, player };
+      result = gameMessages.noSuchCreatureFound;
+      return { result, player };
     }
 
     // Validate numeric fields without truthy traps
@@ -59,8 +59,8 @@ const attackCreature = (game, creatureName) => {
       throw new AppError(`calculateAttackDamage returned invalid result`, 400);
     }
 
-    message += totalDamage.message ?? "";
-    message += `You attacked ${target.name} for ${totalDamage.attackDamage} damage. `;
+    result += totalDamage.message ?? "";
+    result += `You attacked ${target.name} for ${totalDamage.attackDamage} damage. `;
 
     // Apply damage
     target.health = Math.max(
@@ -70,20 +70,20 @@ const attackCreature = (game, creatureName) => {
 
     if (!target.isAlive?.() ? target.health <= 0 : !target.isAlive()) {
       // Target died
-      message += `${target.name} has been defeated! `;
+      result += `${target.name} has been defeated! `;
 
       // Remove creature from location
       const idx = creaturesInLocation.indexOf(target);
       if (idx >= 0) creaturesInLocation.splice(idx, 1);
 
       // Drop inventory
-      message += gameMessages.inventoryDropped;
+      result += gameMessages.inventoryDropped;
       if (target.hasInventoryItems?.()) {
         const creatureInventory = target.getInventory?.();
         target.dropInventory?.(game.player.currentLocation);
-        message += creatureInventory || "";
+        result += creatureInventory || "";
       } else {
-        message += gameMessages.emptyInventory;
+        result += gameMessages.emptyInventory;
       }
 
       // Rewards
@@ -91,19 +91,19 @@ const attackCreature = (game, creatureName) => {
       const xp = Number(target.killValue ?? 0);
       const leveledUp = game.player.gainExperience?.(xp);
       if (leveledUp && leveledUp.length > 0) {
-        message += ` ${leveledUp}`;
+        result += ` ${leveledUp}`;
       }
     } else {
       // Retaliation
       const retaliated = retaliation(game, target); // { message, damage }
-      if (retaliated?.message) message += retaliated.message;
+      if (retaliated?.message) result += retaliated.message;
 
       if (
         !game.player.isAlive?.()
           ? game.player.health <= 0
           : !game.player.isAlive()
       ) {
-        message += gameMessages.playerDefeated;
+        result += gameMessages.playerDefeated;
         game.player.dropInventory?.(game.player.currentLocation);
         // track kill for the target (your addKill returns ++)
         target.addKill?.();
@@ -114,10 +114,10 @@ const attackCreature = (game, creatureName) => {
     // Handle creatures fleeing
     const fleeMsg = flee(game, creaturesInLocation); // if this returns a string
     if (fleeMsg && fleeMsg.length > 0) {
-      message += ` ${fleeMsg}`;
+      result += ` ${fleeMsg}`;
     }
 
-    message = message.trim();
+    result = result.trim();
 
     // Optionally include fresh player stats for the UI
     if (typeof game.player.getStatsObj === "function") {
@@ -126,7 +126,7 @@ const attackCreature = (game, creatureName) => {
     }
 
     return {
-      message,
+      result,
       player: {
         stats: game.player.getStatsObj(),
         inventory: game.player.showInventory()

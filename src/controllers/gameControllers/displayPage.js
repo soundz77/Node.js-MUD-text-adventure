@@ -14,7 +14,6 @@ export default function displayPage(req, res) {
   };
   res.status(200).render("adventure", {
     player,
-    location: { ...loc, result: "" },
-    loc
+    location: { ...loc }
   });
 }

@@ -4,7 +4,7 @@ import generateLocations from "./worldMap/generateLocations.js";
 import connectLocationsDFS from "./worldMap/connectLocationsDFS.js";
 import populateLocations from "./worldMap/populateLocations.js";
 import getLocation from "./worldMap/getLocation.js";
-import { gameData, locationDescriptions } from "./gameData/gameData.js";
+import { gameData, locationTitles } from "./gameData/gameData.js";
 import {
   worldState,
   startWorldLoop,
@@ -14,7 +14,7 @@ import runCommand from "./commands/runCommand.js";
 
 class Game {
   constructor() {
-    this.locations = new Map();
+    this.locations = new Map(); // create an empty map
     this.player = new Player("");
     this.isGameOver = false;
 
@@ -58,33 +58,17 @@ class Game {
     this._doBroadcast(event, payload);
   }
 
-  /*
-  setPublisher(fn) {
-    this._publish = fn;
-    const q = Array.isArray(this._queued) ? this._queued : [];
-    this._queued = [];
-    for (const [ev, pl] of q) {
-      try {
-        fn(ev, pl);
-      } catch {
-        /* swallow *
-      }
-    }
-  }
-*/
   setup() {
     try {
-      const { counts, odds, startLocationName } = gameData;
+      const { counts, odds, startLocationId } = gameData;
 
       // 1) Generate locations (pass descriptions)
-      const locs = generateLocations(counts.locations, locationDescriptions);
-      locs.forEach((loc) => this.locations.set(loc.name, loc));
+      const locs = generateLocations(counts.locations, locationTitles);
 
       // 2) Connect locations
       const connectedLocations = connectLocationsDFS(locs);
 
       // 3) Populate with creatures & artifacts
-
       populateLocations(
         connectedLocations,
         counts.creatures,
@@ -94,11 +78,18 @@ class Game {
         odds.artifactInLocation
       );
 
+      locs.forEach((loc) => {
+        this.locations.set(Number(loc.id), loc);
+        this.locations.set(loc.name, loc);
+      }); // Populate the map with the map data
+
+      console.log(locs);
+
       // 4) Start location
-      const startingLocation = getLocation(this.locations, startLocationName);
+      const startingLocation = getLocation(this.locations, startLocationId);
       if (!startingLocation) {
         throw new AppError(
-          `Starting location "${startLocationName}" is undefined.`,
+          `Starting location '${startLocationId}' is undefined/unknown.`,
           400
         );
       }
@@ -116,7 +107,7 @@ class Game {
           `Odds: creatureInLocation: ${odds.creatureInLocation}, ` +
           `creatureHasArtifact: ${odds.creatureHasArtifact}, ` +
           `artifactInLocation: ${odds.artifactInLocation}. ` +
-          `Start: ${startLocationName}`
+          `Start: ${startLocationId}`
       );
     } catch (error) {
       console.error("Error during setup:", error);
@@ -130,12 +121,13 @@ class Game {
 
       setWorldPublisher((event, payload) => this.broadcast(event, payload));
 
-      // Start the world loop
-      startWorldLoop();
-
       // Push initial snapshot
       const payload = this.buildUpdatePayload(this.player.currentLocation);
+      console.log(payload);
       this.broadcast("update", payload);
+
+      // Start the world loop
+      startWorldLoop();
     } catch (error) {
       console.error("Error starting the game:", error);
       throw new AppError(`Failed to start the game. ${error}`, 400);
@@ -145,38 +137,20 @@ class Game {
   buildUpdatePayload(location) {
     if (!location) throw new AppError("location is undefined.", 400);
 
-    const d = location.getDetails?.() || {
-      description: location.description,
-      exits: location.exits,
-      changes: location.changes || ""
-    };
-
-    const creaturesStr =
-      location.showCreatures?.() ??
-      (location.creatures || []).map((c) => c.name).join(", ");
-    const artifactsStr =
-      location.showArtifacts?.() ??
-      (location.artifacts || []).map((a) => a.name).join(", ");
-    const players = location.showPlayers?.() || ["Just you"];
+    const loc = location.getDetails();
+    const stats = this.player.getStatsObj();
+    const inventory = this.player.showInventory();
+    const details = this.player.getPlayerDetails();
 
     return {
-      location: {
-        description: d.description,
-        exits: Array.isArray(d.exits) ? d.exits.join(", ") : d.exits,
-        creatures: creaturesStr,
-        artifacts: artifactsStr,
-        players,
-        result: "",
-        changes: location.changes || ""
-      },
+      location: loc,
       player: {
-        stats: this.player.getStatsObj(),
-        classType:
-          this.player.classType ||
-          this.player.playerClass ||
-          "Missing player class",
-        inventory: this.player.showInventory?.() ?? this.player.inventory
-      }
+        name: details.playerName,
+        class: details.playerClass,
+        experience: details.playerExperience,
+        inventory,
+        stats
+      } // message is sent to room
     };
   }
 
@@ -187,10 +161,7 @@ class Game {
 
       // after state change, broadcast the current snapshot
       const payload = this.buildUpdatePayload(this.player.currentLocation);
-      payload.message = message; // Include the result of the action
-      payload.location = location; // Include structured location
-      payload.v = 1;
-
+      console.log(payload);
       this.broadcast("update", payload);
 
       return { ok: true, message, location };
@@ -202,31 +173,11 @@ class Game {
 
   getLocationData(location) {
     try {
-      if (!location) throw new AppError("location is undefined.", 400);
+      if (!location) throw new AppError("Location is undefined.", 400);
 
-      const d = location.getDetails?.() || {
-        description: location.description,
-        exits: location.exits,
-        changes: location.changes || ""
-      };
+      const d = location.getDetails();
 
-      // creatures/artifacts as strings (matches your current payload)
-      const creaturesStr =
-        location.showCreatures?.() ??
-        (location.creatures || []).map((c) => c.name).join(", ");
-      const artifactsStr =
-        location.showArtifacts?.() ??
-        (location.artifacts || []).map((a) => a.name).join(", ");
-      const players = location.showPlayers?.() || ["Just you"];
-
-      return {
-        description: d.description,
-        exits: Array.isArray(d.exits) ? d.exits.join(", ") : d.exits,
-        creatures: creaturesStr,
-        artifacts: artifactsStr,
-        players,
-        result: ""
-      };
+      return d;
     } catch (error) {
       throw new AppError(`Failed to get location data. ${error}`, 400);
     }

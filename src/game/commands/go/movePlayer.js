@@ -15,7 +15,7 @@ const movePlayer = (game, direction) => {
     // Let Player.moveTo() handle removal/adding to location.players
     game.player.moveTo(nextLocation);
 
-    return `You move ${direction} to ${nextLocation.description}.`;
+    return `You move ${direction} to ${nextLocation.name}.`;
   } catch (error) {
     throw new AppError(`Error moving to ${direction}: ${error.message}`, 400);
   }

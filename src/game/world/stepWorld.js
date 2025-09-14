@@ -117,6 +117,7 @@ export function stepWorld(tick, rnd) {
     S.lastLogAt = now;
   }
 
+  /*
   // ---- Periodic emit to clients/admin UI
   worldState.tickIndex = (worldState.tickIndex ?? 0) + 1;
   if (worldState.tickIndex % (worldState.stats.emitEveryTicks || 10) === 0) {
@@ -143,7 +144,7 @@ export function stepWorld(tick, rnd) {
       }
     });
   }
-
+*/
   return changes;
 }
 

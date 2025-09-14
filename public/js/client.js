@@ -10,8 +10,9 @@
   const els = {
     form: document.getElementById("command-form"),
     cmd: document.getElementById("command"),
-    msgList: document.getElementById("message-list"),
-    location: document.getElementById("location"),
+    msgList: document.getElementById("message"),
+    name: document.getElementById("name"),
+    description: document.getElementById("description"),
     exits: document.getElementById("locationExits"),
     creatures: document.getElementById("creatures"),
     artifacts: document.getElementById("artifacts"),
@@ -47,7 +48,7 @@
     },
     chat: {
       form: document.getElementById("chat-form"),
-      input: document.getElementById("message"),
+      input: document.getElementById("chat-input"),
       ul: document.getElementById("world-messages")
     }
   };
@@ -154,14 +155,17 @@
 
     // Location
     if (location) {
-      if (location.result != null && payload.message == null) {
+      if (location.result != null && payload.result == null) {
         els.msgList.textContent = location.result;
       }
       if (location.message != null && payload.message == null) {
         els.msgList.textContent = location.message;
       }
+      if (location.name != null) {
+        els.name.textContent = location.name;
+      }
       if (location.description != null) {
-        els.location.textContent = location.description;
+        els.description.textContent = location.description;
       }
       if (location.exits != null) {
         els.exits.textContent = "Exits: " + listify(location.exits);

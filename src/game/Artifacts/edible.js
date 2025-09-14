@@ -28,7 +28,7 @@ class Edible extends Artifact {
     character.stats.defence = Number(character.stats.defence ?? 0) + s.defence;
     character.stats.strength =
       Number(character.stats.strength ?? 0) + s.strength;
-    return `${character.name} consumes ${this.name}.`;
+    return `${character.name} eats the ${this.name}.`;
   }
 }
 

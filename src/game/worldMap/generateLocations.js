@@ -2,16 +2,23 @@ import AppError from "../../../base-template/src/utils/errors/AppError.js";
 import Location from "../Locations/location.js";
 
 // Create the specified number of Locations
-const generateLocations = (numlocations, locationDescriptions) => {
+const generateLocations = (
+  numlocations,
+  locationTitles,
+  locationDescriptions = "Not set yet"
+) => {
   try {
     const locations = [];
     for (let i = 0; i < numlocations; i++) {
-      const randomDescription =
-        locationDescriptions[
-          Math.floor(Math.random() * locationDescriptions.length)
-        ];
-      const locationName = `Location: ${i + 1}`;
-      const location = new Location(locationName, randomDescription);
+      const randomTitle =
+        locationTitles[Math.floor(Math.random() * locationTitles.length)];
+      const locationId = i + 1;
+      const locationDescription = "Not set yet";
+      const location = new Location(
+        locationId,
+        randomTitle,
+        locationDescription
+      );
       locations.push(location);
     }
     return locations;

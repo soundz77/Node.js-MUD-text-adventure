@@ -1,5 +1,6 @@
 class Location {
-  constructor(name, description) {
+  constructor(id, name, description) {
+    this.id = id;
     this.name = name;
     this.description = description;
     this.exits = {};
@@ -25,22 +26,25 @@ class Location {
 
   getDetails() {
     return {
-      description: this.getDescription(),
-      exits: Object.keys(this.exits).join(", ").trim(),
-      artifacts: this.showArtifacts(),
-      creatures: this.showCreatures(),
-      players: this.showPlayers()
+      id: this.id,
+      name: this.name,
+      description: this.getDescription() || "Test: No description",
+      exits: Object.keys(this.exits).join(", ").trim() || ["Test: No exists"],
+      artifacts: this.showArtifacts() || ["Test: No artifacts"],
+      creatures: this.showCreatures() || ["Test: No creatures"],
+      players: this.showPlayers() || ["Just you"]
+      // message and result sent by emitter
     };
   }
 
   // Show
   showArtifacts() {
-    if (this.artifacts.length === 0) return "";
+    if (this.artifacts.length === 0) return "No artifacts";
     return this.artifacts.map((a) => a.name ?? String(a)).join(", ");
   }
 
   showCreatures() {
-    if (this.creatures.length === 0) return "";
+    if (this.creatures.length === 0) return "No creatures";
     return this.creatures.map((c) => c.name ?? String(c)).join(", ");
   }
 
