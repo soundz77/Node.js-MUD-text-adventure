@@ -5,7 +5,7 @@ import Location from "../Locations/location.js";
 const generateLocations = (
   numlocations,
   locationTitles,
-  locationDescriptions = "Not set yet"
+  locationDescriptions = "Location descriptions not set yet"
 ) => {
   try {
     const locations = [];
@@ -13,7 +13,7 @@ const generateLocations = (
       const randomTitle =
         locationTitles[Math.floor(Math.random() * locationTitles.length)];
       const locationId = i + 1;
-      const locationDescription = "Not set yet";
+      const locationDescription = "Location descriptions not set yet";
       const location = new Location(
         locationId,
         randomTitle,

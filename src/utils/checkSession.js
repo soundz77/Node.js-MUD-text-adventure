@@ -1,26 +1,24 @@
+// utils/checkSession.js
 import AppError from "../../base-template/src/utils/errors/AppError.js";
 
-const checkSession = (req, res, next) => {
-  // Check if playerName and playerClass are set in session
-  if (req.session.playerName && req.session.playerClass) {
+export default function checkSession(req, res, next) {
+  // already set?
+  if (req.session?.playerName && req.session?.playerClass) {
     return next();
   }
 
-  // If playerName and playerClass are not set in session, check req.body
-  const { playerName, playerClass } = req.body;
-
+  // allow POST to set session from form body
+  const { playerName, playerClass } = req.body || {};
   if (playerName && playerClass) {
-    // Set playerName and playerClass in session
     req.session.playerName = playerName;
     req.session.playerClass = playerClass;
-
     return next();
   }
 
-  // If playerName and playerClass are not available in session or req.body, render index
-  return new AppError(
-    "PlayerName and/or PlayerClass are not available in session or req.body"
+  return next(
+    new AppError(
+      "playerName and/or playerClass missing in session or request body",
+      400
+    )
   );
-};
-
-export default checkSession;
+}

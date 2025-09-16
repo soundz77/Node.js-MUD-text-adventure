@@ -5,7 +5,7 @@ export const gameData = {
   counts: {
     locations: 5,
     creatures: 20,
-    artifacts: 5
+    artifacts: 50
   },
   odds: {
     creatureInLocation: 0.9,
@@ -29,7 +29,7 @@ export const locationTitles = [
   "A tranquil garden with blooming flowers."
 ];
 
-export const locationDescriptions = ["Not set yet"];
+export const locationDescriptions = ["Location descriptions not set yet"];
 
 export const creatureBlueprints = [
   {

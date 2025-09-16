@@ -32,7 +32,7 @@ class Location {
       exits: Object.keys(this.exits).join(", ").trim() || ["Test: No exists"],
       artifacts: this.showArtifacts() || ["Test: No artifacts"],
       creatures: this.showCreatures() || ["Test: No creatures"],
-      players: this.showPlayers() || ["Just you"]
+      players: this.showPlayers() || ["Test: No players"]
       // message and result sent by emitter
     };
   }
@@ -45,9 +45,11 @@ class Location {
 
   showCreatures() {
     if (this.creatures.length === 0) return "No creatures";
-    return this.creatures.map((c) => c.name ?? String(c)).join(", ");
+    const c = this.creatures.map((c) => c.name ?? String(c)).join(", ");
+    return c;
   }
 
+  // Still returns if player names are empty
   showPlayers() {
     if (this.players.length === 0) return "No one else";
     return this.players.map((p) => p.name ?? String(p)).join(", ");

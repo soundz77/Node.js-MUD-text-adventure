@@ -98,7 +98,6 @@ export function stepWorld(tick, rnd) {
     }
   }
 
-  // ---- After you've added all changes for this tick, update counters
   // Count this tick's events
   for (const ch of changes) {
     if (ch.t === "spawn" && ch.kind === "creature") S.tickCounters.npcSpawns++;
@@ -130,34 +129,6 @@ export function stepWorld(tick, rnd) {
     S.lastLogAt = now;
   }
 
-  /*
-  // ---- Periodic emit to clients/admin UI
-  worldState.tickIndex = (worldState.tickIndex ?? 0) + 1;
-  if (worldState.tickIndex % (worldState.stats.emitEveryTicks || 10) === 0) {
-    const snap = collectWorldSnapshot();
-    changes.push({
-      t: "worldStats",
-      at: now,
-      npc: {
-        count: snap.npcCount,
-        capGlobal: snap.caps.npcGlobal,
-        capPerRoom: snap.caps.npcPerRoom
-      },
-      items: {
-        count: snap.artifactCount,
-        capGlobal: snap.caps.itemGlobal,
-        capPerRoom: snap.caps.itemPerRoom
-      },
-      perRoom: snap.perRoom, // {min, avg, max, topRooms:[{name,n}]}
-      respawnQueued: snap.respawnQueued,
-      rates: {
-        npcSpawnPerSec: Number(S.ema.npcSpawnsPerSec.toFixed(3)),
-        npcDeathPerSec: Number(S.ema.npcDeathsPerSec.toFixed(3)),
-        itemSpawnPerSec: Number(S.ema.itemSpawnsPerSec.toFixed(3))
-      }
-    });
-  }
-*/
   return changes;
 }
 
@@ -285,7 +256,7 @@ function boundedSpawns(rnd, changes) {
             id: c.id,
             roomId: roomIdOf(loc),
             at: roomNameOf(loc),
-            npcName: c.name || c.kind || c.id
+            npcName: c.name
           });
           budget--;
           if (budget <= 0 || countCreaturesWorld() >= C.maxGlobal) break;
@@ -301,16 +272,16 @@ function boundedSpawns(rnd, changes) {
 
           if (rnd() < 0.5) {
             // randomness keeps it huntable
-            const a = spawnRandomCreatureAt(loc, rnd);
-            if (a) {
+            const c = spawnRandomCreatureAt(loc, rnd);
+            if (c) {
               markRoomSpawned(C, loc, t);
               changes.push({
                 t: "spawn",
-                kind: "artifact",
-                id: a.id,
+                kind: "creature",
+                id: c.id,
                 roomId: roomIdOf(loc),
                 at: roomNameOf(loc),
-                artifactName: a.name || a.kind || a.id
+                npcName: c.name
               });
               budget--;
             }
@@ -344,7 +315,7 @@ function boundedSpawns(rnd, changes) {
               kind: "artifact",
               id: a.id,
               at: roomNameOf(loc),
-              artifactName: a.name || a.kind || a.id
+              artifactName: a.name
             });
             budget--;
           }
@@ -359,6 +330,7 @@ function npcVsNpcSkirmishes(rnd, changes) {
   const rooms = shuffledRooms(rnd);
   for (const loc of rooms) {
     const list = loc?.creatures;
+
     if (!Array.isArray(list) || list.length < 2) continue;
 
     if (rnd() < 0.25) {
@@ -378,8 +350,10 @@ function npcVsNpcSkirmishes(rnd, changes) {
 
       changes.push({
         t: "npcSkirmish",
-        a: A.id,
-        b: B.id,
+        aId: A.id,
+        bId: B.id,
+        aName: A.name,
+        bName: B.name,
         roomId: roomIdOf(loc),
         room: roomNameOf(loc),
         dmgA,
@@ -390,10 +364,13 @@ function npcVsNpcSkirmishes(rnd, changes) {
         removeNpc(A, loc);
         changes.push({
           t: "npcDeath",
+          name: A.name,
           id: A.id,
           roomId: roomIdOf(loc),
           room: roomNameOf(loc)
         });
+
+        // This should use ID - and respawn in random location!
         scheduleNpcRespawn(roomNameOf(loc), rnd);
       }
       if (B.stats.health <= 0) {
@@ -401,9 +378,11 @@ function npcVsNpcSkirmishes(rnd, changes) {
         changes.push({
           t: "npcDeath",
           id: B.id,
+          name: B.name,
           roomId: roomIdOf(loc),
           room: roomNameOf(loc)
         });
+        // This should use ID - and respawn in random location!
         scheduleNpcRespawn(roomNameOf(loc), rnd);
       }
     }
@@ -500,10 +479,6 @@ function findByName(name) {
     if (loc.name === name) return loc;
   }
   return null;
-}
-
-function emaUpdate(prev, alpha, sample) {
-  return alpha * sample + (1 - alpha) * prev;
 }
 
 function collectWorldSnapshot() {

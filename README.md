@@ -18,3 +18,19 @@ Players can attack monsters (which retaliate and may flee the location) and pick
 Players stats are visible in the left side-bar. The location description is in the centre, and a basic chat box is provided in the right side-bar.
 
 Uses node.js and socket.io.
+
+Bugs
+
+At startup
+
+New player arrives in first room. Room details are not displayed as now need to use sockets instead of calling functions directly.
+
+error: unhandledRejection: Unable to start game: Failed to start the game. Error: Failed to set up the game. Error: Error populating locations. Error: Error adding creature to location. TypeError: Cannot read properties of undefined (reading 'addCreature')
+Error: Unable to start game: Failed to start the game. Error: Failed to set up the game. Error: Error populating locations. Error: Error adding creature to location. TypeError: Cannot read properties of undefined (reading 'addCreature')
+at startGame startGame.js:20:11)
+at async onImport.tracePromise.**proto** (node:internal/modules/esm/loader:547:26)
+at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:116:5)
+[nodemon] app crashed - waiting for file changes before starting...
+
+On Spawn/Tick
+Some creatures are spawned as artifacts. So "An item shimmers into view:" ... but it's an Orc etc.

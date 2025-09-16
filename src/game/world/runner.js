@@ -124,21 +124,15 @@ function tickOnce() {
 
   const changes = stepWorld(t, rnd) || []; // compact list of diffs
 
-  // NEW: room-targeted dispatch (only to occupied rooms if possible)
-  dispatchWorldChanges(changes);
+  //  console.log(changes);
 
-  // Optional: global broadcast of raw changes (admin/debug)
-  // broadcastChanges(changes);
+  // Room-targeted dispatch (only to occupied rooms)
+  dispatchWorldChanges(changes);
 }
 
 function deriveTickRng(tick) {
   const seed = worldState.seed ^ hash32(`tick:${tick}`);
   return mulberry32(seed);
-}
-
-function broadcastChanges(changes) {
-  if (!changes?.length) return;
-  publish?.("world:changes", { tick: worldState.tickIndex, changes });
 }
 
 /** Optional: change tick interval on the fly (restarts loop) */
@@ -162,10 +156,6 @@ function roomEmit(roomId, event, payload, { onlyIfOccupied = true } = {}) {
   publishToRoom(roomId, event, payload, { onlyIfOccupied });
 }
 
-function cap(s) {
-  return (s && s[0]?.toUpperCase() + s.slice(1)) || s || "";
-}
-
 /** Turn stepWorld diffs into player-facing emits, per room */
 function dispatchWorldChanges(changes) {
   if (!Array.isArray(changes) || changes.length === 0) return;
@@ -175,41 +165,42 @@ function dispatchWorldChanges(changes) {
       // Spawns
       case "spawn":
         if (ch.kind === "creature") {
-          roomEmit(ch.roomId, "player:message", {
-            message: `${cap(ch.npcName)} appears.`
+          roomEmit(ch.roomId, "room:event", {
+            kind: "spawn",
+            message: `A ${ch.npcName} appears.`
           });
-        } else if (ch.kind === "artifact") {
-          roomEmit(ch.roomId, "player:message", {
+        } else {
+          roomEmit(ch.roomId, "room:event", {
+            kind: "itemSpawn",
             message: `An item shimmers into view: ${ch.artifactName}.`
           });
         }
         break;
 
-      // Movement (enter/leave already tagged with roomId)
       case "roomNpcEnter":
-        roomEmit(ch.roomId, "player:message", {
-          message: `${cap(ch.npcName)} entered from the ${ch.dir}.`
+        roomEmit(ch.roomId, "room:event", {
+          kind: "npcEnter",
+          message: `${ch.npcName} entered from the ${ch.dir}.`
         });
         break;
 
       case "roomNpcLeave":
-        roomEmit(ch.roomId, "player:message", {
-          message: `${cap(ch.npcName)} left to the ${ch.dir}.`
+        roomEmit(ch.roomId, "room:event", {
+          kind: "npcLeave",
+          message: `${ch.npcName} left to the ${ch.dir}.`
         });
         break;
 
-      // Skirmishes / deaths
       case "npcSkirmish":
-        roomEmit(ch.roomId, "player:message", {
-          message: `You hear fighting nearby.`,
-          // optional: also feed a room "changes" list if your client renders it
-          location: { changes: [`Skirmish (${ch.dmgA}/${ch.dmgB} dmg).`] }
+        roomEmit(ch.roomId, "room:event", {
+          kind: "skirmish",
+          message: `${ch.aName} attacks ${ch.bName}. Damage: ${ch.dmgA} | ${ch.dmgB}`
         });
         break;
 
       case "npcDeath":
-        roomEmit(ch.roomId, "player:message", {
-          message: `A creature collapses.`
+        roomEmit(ch.roomId, "room:event", {
+          message: `${ch.name} has been defeated!`
         });
         break;
 

@@ -9,12 +9,11 @@ import { startGame } from "./game/startGame.js";
 
 const main = async () => {
   const app = setupApp(); // Initialise the base-template app
+  configureAppMiddleware(app);
+  configureRoutes(app);
   const server = http.createServer(app);
   const game = startGame();
   const io = socketConfig(server, { game });
-
-  configureAppMiddleware(app);
-  configureRoutes(app);
 
   await new Promise((res) => server.listen(3000, res));
 

@@ -1,4 +1,3 @@
-// config/socketConfig.js
 import { Server } from "socket.io";
 import sessionMessages from "../utils/logging/messages/sessionMessages.js";
 import { createEmitters } from "../../src/game/gameData/emitters.js";
@@ -11,85 +10,133 @@ const roomKey = (id) => `room:${id}`;
 
 const socketConfig = (server, { game }) => {
   const io = new Server(server, {
-    path: "/socket.io", // must match client
+    path: "/socket.io",
     serveClient: false
   });
 
-  // Emitter facade (your existing abstraction)
+  // ---- Emitters facade
   const emitters = createEmitters(io);
   game.setEmitters(emitters);
 
-  // Wire world → socket room publishing
-  setRoomPublisher((roomId, event, payload) => {
+  // ---- World/runner → sockets (normalize to the single room channel)
+  // Accept legacy names like "room:narration" or "room:state" and map to { type, ...payload }.
+  setRoomPublisher((roomId, eventOrType, payload) => {
     if (roomId == null) return;
-    io.to(roomKey(roomId)).emit(event, payload);
+    let type = String(eventOrType || "").trim();
+    if (type.startsWith("room:")) type = type.slice(5); // "room:narration" -> "narration"
+    if (type === "narration") type = "event";
+    if (!type) type = payload?.type || "event";
+    emitters.toRoom(roomId, { type, ...payload });
   });
 
+  // For AI/NPC ticks that only emit if someone is there
   setRoomOccupancyChecker((roomId) => {
     const r = io.sockets.adapter.rooms.get(roomKey(roomId));
     return !!(r && r.size > 0);
   });
 
-  // Helper to (re)join a player's socket to a room
+  // Helper to move a socket between rooms
   function moveSocketBetweenRooms(socket, fromId, toId) {
     if (!socket) return;
     if (fromId != null) socket.leave(roomKey(fromId));
     if (toId != null) socket.join(roomKey(toId));
   }
 
+  // Optional: invert arrival text
+  function inverseDirection(dir) {
+    const m = {
+      north: "south",
+      south: "north",
+      east: "west",
+      west: "east",
+      up: "down",
+      down: "up"
+    };
+    return m[String(dir || "").toLowerCase()] || dir;
+  }
+
   io.on("connection", (socket) => {
     console.log(sessionMessages.success.connect);
 
-    // Attach socket to your single-player instance (adjust later if multi-player)
+    // Attach this socket to your (current) single-player instance
     game.player.socketId = socket.id;
 
-    // Join current room on connect
+    // Join the player's current room on connect
     const startId = game.player.currentLocation?.id;
     if (startId != null) socket.join(roomKey(startId));
 
-    // Movement hook (called by movePlayer)
+    // Game → sockets: movement hook
+    // Your game should call this when the player moves.
     game.onPlayerMoved = (player, fromId, toId, direction) => {
       const s = io.sockets.sockets.get(player.socketId);
       moveSocketBetweenRooms(s, fromId, toId);
-      // Optional immediate feedback (your client also shows command results)
-      s?.emit("player:message", { message: `You move ${direction}.` });
+
+      // Private acknowledgement
+      emitters.toPlayer(player.socketId, { message: `You move ${direction}.` });
+
+      // Room-visible narration (names optional if you don’t have them yet)
+      const who = player?.name || "Someone";
+      if (fromId != null)
+        emitters.toRoom(fromId, {
+          type: "event",
+          text: `${who} leaves ${direction}.`
+        });
+      if (toId != null)
+        emitters.toRoom(toId, {
+          type: "event",
+          text: `${who} arrives from the ${inverseDirection(direction)}.`
+        });
     };
 
-    // Commands from client
-    socket.on("processCommand", (command) => {
+    // --- Room lifecycle (client tells us their room on load/reconnect) ---
+    socket.on("room:join", ({ roomId } = {}) => {
+      if (roomId == null) return;
+      for (const r of socket.rooms) if (r !== socket.id) socket.leave(r);
+      socket.join(roomKey(roomId));
+    });
+
+    // --- Commands (private reply; room updates are broadcast by game/world) ---
+    socket.on("room:command", ({ roomId, command } = {}) => {
+      if (!command) return;
       try {
-        const { ok, message, location } = game.processCommand(command, {
-          socket
+        const { ok, message, location, player } = game.processCommand(command, {
+          socketId: socket.id,
+          roomId
         });
-        // Always send a player-targeted message (your client consumes message+location)
-        emitters.toPlayer(socket, { message, location });
-        // If you want to suppress sending on failure, uncomment:
-        // if (ok) emitters.toPlayer(socket, { message, location });
+        // Always reply privately with the latest snapshot for this player
+        emitters.toPlayer(socket.id, { message, location, player });
+        // Any room-visible narration/state should be emitted by your game/world via:
+        //   game.broadcast("event"/"state"/"narration", { roomId, ... })
       } catch (err) {
-        console.error("processCommand error:", err);
-        emitters.toPlayer(socket, {
+        console.error("room:command error:", err);
+        emitters.toPlayer(socket.id, {
           message: "An error occurred processing that command."
         });
       }
     });
 
-    // World chat (broadcast)
-    socket.on("chatMessage", (msg) => {
-      emitters.toAll({ type: "chat", msg });
+    // --- Room chat (open chat for all players in the room) ---
+    socket.on("room:chat:send", ({ roomId, text, fromName } = {}) => {
+      if (!roomId || !text) return;
+      emitters.toRoom(roomId, { type: "chat", text, fromName });
     });
 
+    // --- World chat (optional/global) ---
+    socket.on("world:chat:send", ({ text, fromName } = {}) => {
+      if (!text) return;
+      emitters.toWorld({ text, fromName });
+    });
+
+    // --- Housekeeping ---
     socket.conn.on("error", (err) =>
       console.error("Socket engine error:", err)
     );
     socket.on("disconnect", () => {
       console.log(sessionMessages.success.disconnect);
-      // Optional: leave current room explicitly (socket.io does this automatically)
-      // const curId = game.player.currentLocation?.id;
-      // if (curId != null) socket.leave(roomKey(curId));
     });
   });
 
-  return io; // return it so callers can use io if needed
+  return io;
 };
 
 export default socketConfig;

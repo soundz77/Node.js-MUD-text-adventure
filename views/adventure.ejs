@@ -8,16 +8,19 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="
-        default-src 'self';
-        script-src 'self' https://cdn.socket.io;
-        style-src 'self' 'unsafe-inline';
-        connect-src 'self' ws: wss:;
-      "
+  default-src 'self';
+  script-src 'self' https://cdn.socket.io;
+  style-src 'self' 'unsafe-inline';
+  connect-src 'self' ws: wss:;
+"
     />
 
     <link rel="stylesheet" type="text/css" href="/style.css" />
   </head>
-  <body data-player-name="<%= player.name %>">
+  <body
+    data-player-name="<%= player.name %>"
+    data-room-id="<%= location && location.id %>"
+  >
     <div class="container">
       <div class="navbar">
         <h1>Welcome <%= player.name %>!</h1>
@@ -32,12 +35,14 @@
           <h2>Player Stats</h2>
           <div class="stats">
             <h3>Basic stats</h3>
+
             <div class="stat">
               <span class="stat-label">Health:</span>
               <div class="stat-bar">
                 <div
                   class="stat-bar-inner"
-                  id="health-bar"
+                  id="healthBar"
+                  data-initial="<%= player.stats.health %>"
                   style="width: <%= player.stats.health %>%"
                 ></div>
               </div>
@@ -49,19 +54,22 @@
               <div class="stat-bar">
                 <div
                   class="stat-bar-inner"
-                  id="stamina-bar"
+                  id="staminaBar"
+                  data-initial="<%= player.stats.stamina %>"
                   style="width: <%= player.stats.stamina %>%"
                 ></div>
               </div>
               <span id="stamina"><%= player.stats.stamina %></span>
             </div>
+
             <h3>Primary stats</h3>
             <div class="stat">
               <span class="stat-label">Strength:</span>
               <div class="stat-bar">
                 <div
                   class="stat-bar-inner"
-                  id="strength-bar"
+                  id="strengthBar"
+                  data-initial="<%= player.stats.strength %>"
                   style="width: <%= player.stats.strength %>%"
                 ></div>
               </div>
@@ -74,7 +82,8 @@
               <div class="stat-bar">
                 <div
                   class="stat-bar-inner"
-                  id="defence-bar"
+                  id="defenceBar"
+                  data-initial="<%= player.stats.defence %>"
                   style="width: <%= player.stats.defence %>%"
                 ></div>
               </div>
@@ -86,7 +95,8 @@
               <div class="stat-bar">
                 <div
                   class="stat-bar-inner"
-                  id="attack-bar"
+                  id="attackBar"
+                  data-initial="<%= player.stats.attack %>"
                   style="width: <%= player.stats.attack %>%"
                 ></div>
               </div>
@@ -98,7 +108,8 @@
               <div class="stat-bar">
                 <div
                   class="stat-bar-inner"
-                  id="experience-bar"
+                  id="experienceBar"
+                  data-initial="<%= player.stats.experience %>"
                   style="width: <%= player.stats.experience %>%"
                 ></div>
               </div>
@@ -106,7 +117,7 @@
             </div>
           </div>
 
-          <h2 id="inventory-list">
+          <h2 id="inventory">
             <% if (player.inventory) { %> Your inventory: <%= player.inventory
             %> <% } %>
           </h2>
@@ -114,56 +125,49 @@
 
         <div class="main-content">
           <div class="left-column">
-            <p>You are here:</p>
-            <h2 id="name">
-              <% if (location && location.name) { %> <%= location.name %> <% }
-              %>
-            </h2>
-            <h3 id="description">
-              <% if (location && location.description) { %> <%=
-              location.description %> <% } %>
-            </h3>
+            <h2 id="name"></h2>
+            <h3 id="description"></h3>
+            <h2 id="players"></h2>
+            <h2 id="exits"></h2>
+            <h2 id="creatures"></h2>
+            <h2 id="artifacts"></h2>
 
-            <h2 id="players">
-              <% if (location && location.players) { %> Players: <%=
-              location.players %> <% } %>
-            </h2>
-            <h2 id="locationExits">
-              <% if (location && location.exits) { %> Exits: <%= location.exits
-              %> <% } %>
-            </h2>
-
-            <h2 id="creatures">
-              <% if (location && location.creatures && location.creatures.length
-              > 0) { %> Monsters: <%= location.creatures %> <% } %>
-            </h2>
-
-            <h2 id="artifacts">
-              <% if (location && location.artifacts && location.artifacts.length
-              > 0) { %> Artifacts: <%= location.artifacts %> <% } %>
-            </h2>
-
-            <form id="command-form">
+            <form id="commandForm">
               <label for="command">Enter command:</label>
               <input type="text" id="command" name="command" required />
               <button type="submit">Submit</button>
             </form>
 
             <div>
+              <!-- Command reply / headline -->
               <h2 id="message"></h2>
-
               <% if (location && location.message) { %> <%= location.message %>
               <% } %>
+            </div>
+
+            <div class="panel">
+              <h3>Room events</h3>
+              <ul id="roomEvents"></ul>
             </div>
           </div>
 
           <div class="right-column">
-            <!-- World Chat box -->
-            <div id="world-chat" class="panel">
-              <h3>World Chat</h3>
-              <ul id="world-messages"></ul>
-              <form id="chat-form">
-                <input id="chat-input" autocomplete="off" />
+            <!-- Room Chat box (players in the same room) -->
+            <div id="roomChat" class="panel">
+              <h3>Room chat</h3>
+              <ul id="roomMessages"></ul>
+              <form id="chatForm">
+                <input id="chatInput" autocomplete="off" />
+                <button>Send</button>
+              </form>
+            </div>
+
+            <!-- World Chat box (optional — admin/global) -->
+            <div id="worldChat" class="panel">
+              <h3>World chat</h3>
+              <ul id="worldMessages"></ul>
+              <form id="worldForm">
+                <input id="worldInput" autocomplete="off" />
                 <button>Send</button>
               </form>
             </div>
@@ -178,9 +182,9 @@
     </div>
 
     <script
-      src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+      src="https://cdn.socket.io/4.7.5/socket.io.min.js"
       crossorigin="anonymous"
     ></script>
-    <script src="/js/client.js"></script>
+    <script src="/js/client.js" defer></script>
   </body>
 </html>
