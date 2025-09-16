@@ -27,8 +27,8 @@
   // --- DOM cache (match your EJS IDs exactly) ---
   const els = {
     // headline + command form
-    commandForm: document.getElementById("commandForm"),
-    commandInput: document.getElementById("command"),
+    cmdForm: document.getElementById("commandForm"),
+    cmdInput: document.getElementById("command"),
     headline: document.getElementById("message"),
 
     // left column location panel
@@ -60,7 +60,7 @@
     bars: {
       health: {
         span: document.getElementById("health"),
-        bar: document.getElementById("healthBar")
+        bar: document.getElementById("healtBar")
       },
       stamina: {
         span: document.getElementById("stamina"),
@@ -99,7 +99,7 @@
     if (el.bar) el.bar.style.width = v + "%";
   }
   function setInputsEnabled(on) {
-    if (els.commandInput) els.commandInput.disabled = !on;
+    if (els.cmdInput) els.cmdInput.disabled = !on;
     if (els.chatInput) els.chatInput.disabled = !on;
     if (els.worldInput) els.worldInput.disabled = !on;
   }
@@ -250,14 +250,14 @@
   });
 
   // --- Emits: commands & room chat ---
-  els.commandForm?.addEventListener("submit", (e) => {
+  els.cmdForm?.addEventListener("submit", (e) => {
     e.preventDefault();
-    const command = els.commandInput?.value.trim();
+    const command = els.cmdInput?.value.trim();
     if (!command) return;
     logEmit("room:command", { roomId, command });
     socket.emit("room:command", { roomId, command });
     if (els.headline) els.headline.textContent = "> " + command;
-    els.commandInput.value = "";
+    els.cmdInput.value = "";
   });
 
   els.chatForm?.addEventListener("submit", (e) => {
