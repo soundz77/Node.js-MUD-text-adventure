@@ -9,7 +9,7 @@ const addRandomArtifactToCreature = (creature) => {
       artifactDescriptions[(Math.random() * artifactDescriptions.length) | 0];
     const artifact = createArtifactFromBlueprint(bp);
 
-    creature.addArtifact(artifact);
+    creature.addItemToInventory(artifact);
 
     //    console.log(`Gave ${artifact.name} to creature: ${creature.name}`);
   } catch (error) {

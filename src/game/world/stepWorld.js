@@ -85,13 +85,13 @@ export function stepWorld(tick, rnd) {
   // 4) Regen/decay (optional)
   if (ENABLE_REGEN) {
     for (const npc of worldState.npcs.values()) {
-      const oldHp = npc.stats.health ?? 0;
-      npc.stats.health = Math.min(
-        (npc.stats.health ?? 0) + 1,
-        npc.stats.healthMax ?? 100
+      const oldHp = npc.state.health ?? 0;
+      npc.state.health = Math.min(
+        (npc.state.health ?? 0) + 1,
+        npc.state.healthMax ?? 100
       );
-      if (npc.stats.health !== oldHp) {
-        changes.push({ t: "npcHp", id: npc.id, hp: npc.stats.health });
+      if (npc.state.health !== oldHp) {
+        changes.push({ t: "npcHp", id: npc.id, hp: npc.state.health });
       }
     }
   }
@@ -343,8 +343,8 @@ function npcVsNpcSkirmishes(rnd, changes) {
       const dmgA = 1 + ((rnd() * 4) | 0);
       const dmgB = 1 + ((rnd() * 4) | 0);
 
-      A.stats.health = Math.max(0, (A.stats.health ?? 10) - dmgB);
-      B.stats.health = Math.max(0, (B.stats.health ?? 10) - dmgA);
+      A.state.health = Math.max(0, (A.state.health ?? 10) - dmgB);
+      B.state.health = Math.max(0, (B.state.health ?? 10) - dmgA);
 
       changes.push({
         t: "npcSkirmish",
@@ -358,7 +358,7 @@ function npcVsNpcSkirmishes(rnd, changes) {
         dmgB
       });
 
-      if (A.stats.health <= 0) {
+      if (A.state.health <= 0) {
         removeNpc(A, loc);
         changes.push({
           t: "npcDeath",
@@ -371,7 +371,7 @@ function npcVsNpcSkirmishes(rnd, changes) {
         // This should use ID - and respawn in random location!
         scheduleNpcRespawn(roomNameOf(loc), rnd);
       }
-      if (B.stats.health <= 0) {
+      if (B.state.health <= 0) {
         removeNpc(B, loc);
         changes.push({
           t: "npcDeath",
@@ -403,8 +403,8 @@ function spawnRandomCreatureAt(location, rnd) {
   creature.id = creature.id ?? nextId("cre");
   creature.location = location;
 
-  if (typeof location.addCreature === "function") {
-    location.addCreature(creature);
+  if (typeof location.addCharacter === "function") {
+    location.addCharacter(creature);
   } else {
     location.creatures = location.creatures || [];
     location.creatures.push(creature);
@@ -415,7 +415,8 @@ function spawnRandomCreatureAt(location, rnd) {
     const aBp = pick(rnd, artifactDescriptions);
     const art = createArtifactFromBlueprint(aBp);
     art.id = art.id ?? nextId("art");
-    if (typeof creature.addArtifact === "function") creature.addArtifact(art);
+    if (typeof creature.addItemToInventory === "function")
+      creature.addItemToInventory(art);
     else {
       creature.inventory = creature.inventory || [];
       creature.inventory.push(art);
@@ -461,8 +462,8 @@ function tryMoveNpc(npc, dir) {
     if (idx >= 0) here.creatures.splice(idx, 1);
   }
 
-  if (typeof there.addCreature === "function") {
-    there.addCreature(npc);
+  if (typeof there.addCharacter === "function") {
+    there.addCharacter(npc);
   } else {
     there.creatures = there.creatures || [];
     there.creatures.push(npc);

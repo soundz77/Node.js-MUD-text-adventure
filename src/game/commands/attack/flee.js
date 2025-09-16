@@ -16,7 +16,7 @@ const flee = (game, creatures) => {
       }
 
       creatures.splice(creatures.indexOf(creature), 1);
-      neighbourLocation.addCreature(creature);
+      neighbourLocation.addCharacter(creature);
       message += `${creature.name} flees to the ${randomExit}! `;
     }
   });

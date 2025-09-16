@@ -18,7 +18,7 @@ const addRandomCreatureToLocation = (location, opts = {}) => {
     const creature = createCreatureFromBlueprint(bp);
 
     // add to the location using your existing API
-    location.addCreature(creature);
+    location.addCharacter(creature);
 
     // optionally give it an artifact
     let hasArtifact = false;

@@ -4,7 +4,7 @@ class Location {
     this.name = name;
     this.description = description;
     this.exits = {};
-    this.creatures = [];
+    this.character = [];
     this.artifacts = [];
     this.players = [];
   }
@@ -31,7 +31,7 @@ class Location {
       description: this.getDescription() || "Test: No description",
       exits: Object.keys(this.exits).join(", ").trim() || ["Test: No exists"],
       artifacts: this.showArtifacts() || ["Test: No artifacts"],
-      creatures: this.showCreatures() || ["Test: No creatures"],
+      character: this.showcharacter() || ["Test: No character"],
       players: this.showPlayers() || ["Test: No players"]
       // message and result sent by emitter
     };
@@ -43,9 +43,9 @@ class Location {
     return this.artifacts.map((a) => a.name ?? String(a)).join(", ");
   }
 
-  showCreatures() {
-    if (this.creatures.length === 0) return "No creatures";
-    const c = this.creatures.map((c) => c.name ?? String(c)).join(", ");
+  showcharacter() {
+    if (this.character.length === 0) return "No character";
+    const c = this.character.map((c) => c.name ?? String(c)).join(", ");
     return c;
   }
 
@@ -67,8 +67,8 @@ class Location {
   }
 
   // Add
-  addCreature(character) {
-    this.creatures.push(character);
+  addCharacter(character) {
+    this.character.push(character);
     return this;
   }
 
