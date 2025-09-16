@@ -5,6 +5,8 @@ import Weapon from "../Artifacts/weapon.js";
 import Wearable from "../Artifacts/wearable.js";
 import Edible from "../Artifacts/edible.js";
 import Creature from "../Characters/creature.js";
+import Location from "../Locations/location.js";
+import createId from "../../utils/createId.js";
 
 const num = (v, d = 0) => (v == null || v === "" ? d : Number(v));
 
@@ -52,7 +54,7 @@ export function createArtifactFromBlueprint(bp) {
         }
       });
   }
-  a.blueprintId = bp.id;
+  a.id = createId.make("art");
   return a;
 }
 
@@ -79,8 +81,32 @@ export function createCreatureFromBlueprint(bp) {
   if (bp.baseXP != null) c.baseXP = bp.baseXP;
 
   // Assign an ID
-  c.id =
-    crypto.randomUUID?.() ?? `cre-${Date.now()}-${(Math.random() * 1e6) | 0}`;
+  c.id = createId.make("npc");
 
   return c;
+}
+
+/**
+ * Create a Location instance from a blueprint.
+ * Order of precedence for ID:
+ *  - explicit id in JSON
+ *  - slug → deterministic hash
+ *  - fallback random
+ */
+export function createLocationFromBlueprint(bp) {
+  const id =
+    bp.id ??
+    (bp.slug ? createId.fromSlug("loc", bp.slug) : createId.make("loc"));
+
+  const loc = new Location(
+    id,
+    String(bp.title ?? "Untitled Location"),
+    String(bp.description ?? "Not set yet")
+  );
+
+  loc.slug = bp.slug ?? null;
+  loc.tags = Array.isArray(bp.tags) ? [...bp.tags] : [];
+  loc.exits = bp.exits ?? {}; // { n:"forest_edge", s:null, ... }
+
+  return loc;
 }

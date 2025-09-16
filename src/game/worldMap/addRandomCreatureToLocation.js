@@ -1,5 +1,5 @@
 import AppError from "../../../base-template/src/utils/errors/AppError.js";
-import { creatureBlueprints } from "../gameData/gameData.js";
+import { characterDescriptions } from "../gameData/characterDescriptions.js";
 import addRandomArtifactToCreature from "./addRandomArtifactToCreature.js";
 import { createCreatureFromBlueprint } from "../gameData/factories.js";
 
@@ -14,7 +14,7 @@ const addRandomCreatureToLocation = (location, opts = {}) => {
 
     // pick a blueprint, then instantiate
     const bp =
-      creatureBlueprints[(Math.random() * creatureBlueprints.length) | 0];
+      characterDescriptions[(Math.random() * characterDescriptions.length) | 0];
     const creature = createCreatureFromBlueprint(bp);
 
     // add to the location using your existing API

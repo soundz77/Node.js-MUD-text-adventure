@@ -1,10 +1,8 @@
 // world/stepWorld.js
 import { worldState } from "./runner.js";
-import {
-  gameData,
-  creatureBlueprints,
-  artifactBlueprints
-} from "../gameData/gameData.js";
+import { gameData } from "../gameData/gameData.js";
+import { characterDescriptions } from "../gameData/characterDescriptions.js";
+import { artifactDescriptions } from "../gameData/artifactDescriptions.js";
 import {
   createCreatureFromBlueprint,
   createArtifactFromBlueprint
@@ -399,8 +397,8 @@ function removeNpc(npc, loc) {
 
 /** Spawn a creature instance at a location and register it in worldState.npcs */
 function spawnRandomCreatureAt(location, rnd) {
-  if (!creatureBlueprints.length) return null;
-  const bp = pick(rnd, creatureBlueprints);
+  if (!characterDescriptions.length) return null;
+  const bp = pick(rnd, characterDescriptions);
   const creature = createCreatureFromBlueprint(bp);
   creature.id = creature.id ?? nextId("cre");
   creature.location = location;
@@ -414,7 +412,7 @@ function spawnRandomCreatureAt(location, rnd) {
   worldState.npcs.set(creature.id, creature);
 
   if (rnd() < gameData.odds.creatureHasArtifact) {
-    const aBp = pick(rnd, artifactBlueprints);
+    const aBp = pick(rnd, artifactDescriptions);
     const art = createArtifactFromBlueprint(aBp);
     art.id = art.id ?? nextId("art");
     if (typeof creature.addArtifact === "function") creature.addArtifact(art);
@@ -428,8 +426,8 @@ function spawnRandomCreatureAt(location, rnd) {
 
 /** Place an artifact instance into a location */
 function spawnRandomArtifactAt(location, rnd) {
-  if (!artifactBlueprints.length) return null;
-  const bp = pick(rnd, artifactBlueprints);
+  if (!artifactDescriptions.length) return null;
+  const bp = pick(rnd, artifactDescriptions);
   const artifact = createArtifactFromBlueprint(bp);
   artifact.id = artifact.id ?? nextId("art");
   if (typeof location.addArtifact === "function") {

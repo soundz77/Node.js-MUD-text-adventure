@@ -1,12 +1,21 @@
 import AppError from "../../base-template/src/utils/errors/AppError.js";
 import Player from "./Characters/player.js";
-import generateLocations from "./worldMap/generateLocations.js";
 import connectLocationsDFS from "./worldMap/connectLocationsDFS.js";
 import populateLocations from "./worldMap/populateLocations.js";
-import getLocation from "./worldMap/getLocation.js";
-import { gameData, locationTitles } from "./gameData/gameData.js";
+import { gameData } from "./gameData/gameData.js";
 import { worldState, startWorldLoop } from "../game/world/runner.js";
 import runCommand from "./commands/runCommand.js";
+import { createLocationFromBlueprint } from "./gameData/factories.js";
+import { locationDescriptions } from "./gameData/locationDescriptions.js";
+
+const locationBySlug = new Map();
+
+function indexLocationsBySlug(locs) {
+  locationBySlug.clear();
+  for (const l of locs) {
+    if (l.slug) locationBySlug.set(l.slug, l.id);
+  }
+}
 
 class Game {
   constructor() {
@@ -34,44 +43,54 @@ class Game {
     if (this.emitters) fn();
     else this._queued.push(fn);
   }
-
-  // ---- World bootstrap
   setup() {
-    const { counts, odds, startLocationId } = gameData;
+    // 1) Build from blueprints
+    const locs = locationDescriptions.map(createLocationFromBlueprint);
 
-    // 1) Generate locations (with titles)
-    const locs = generateLocations(counts.locations, locationTitles);
+    // 2) Index slugs
+    indexLocationsBySlug(locs);
 
-    // 2) Connect locations
+    // 3) Connect locations (works on array of Location instances)
     const connectedLocations = connectLocationsDFS(locs);
 
-    // 3) Populate with creatures & artifacts
+    // 4) Populate with creatures & artifacts
+    const { counts, odds } = gameData;
     populateLocations(
       connectedLocations,
       counts.creatures,
       counts.artifacts,
-      odds.creatureInLocation,
-      odds.creatureHasArtifact,
-      odds.artifactInLocation
+      odds.creatureInLocation
+      // odds.creatureHasArtifact,
+      // odds.artifactInLocation
     );
 
-    // 4) Index by id and by name (handy for lookups)
-    locs.forEach((loc) => {
-      this.locations.set(Number(loc.id), loc);
-      this.locations.set(loc.name, loc);
-    });
+    // 5) Build id → Location map (strings, not Number())
+    this.locations.clear();
+    for (const loc of connectedLocations) {
+      this.locations.set(loc.id, loc);
+    }
 
-    // 5) Place player at starting location
-    const startingLocation = getLocation(this.locations, startLocationId);
-    if (!startingLocation) {
+    // 6) Place player at starting location
+    const startId = locationBySlug.get("start");
+    if (!startId) {
+      throw new AppError(`Starting location slug 'start' not found.`, 400);
+    }
+    const startLoc = this.locations.get(startId);
+    if (!startLoc) {
       throw new AppError(
-        `Starting location '${startLocationId}' is undefined/unknown.`,
+        `Start location '${startId}' not in locations map.`,
         400
       );
     }
-    this.player.moveTo(startingLocation);
 
-    // 6) Make world state available to runner (creatures tick etc.)
+    // Add an  API to player:
+    // this.player.moveToLocation(startLoc);
+    // Temp: set directly if your model expects it:
+    this.player.currentLocation = startLoc;
+    // Add player to room (when available)
+    startLoc.addPlayer?.(this.player);
+
+    // 7) Expose to world runner
     worldState.locationsMap = this.locations;
   }
 

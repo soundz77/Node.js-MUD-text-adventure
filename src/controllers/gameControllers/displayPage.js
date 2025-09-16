@@ -33,6 +33,7 @@ export default function displayPage(req, res, next) {
 
     // ----- Location bits (from current Location instance) -----
     const curLoc = game?.player?.currentLocation;
+
     const details = curLoc?.getDetails?.();
 
     if (!curLoc || !details) {
