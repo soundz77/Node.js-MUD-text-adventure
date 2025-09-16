@@ -32,5 +32,3 @@ at async onImport.tracePromise.**proto** (node:internal/modules/esm/loader:547:2
 at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:116:5)
 [nodemon] app crashed - waiting for file changes before starting...
 
-On Spawn/Tick
-Some creatures are spawned as artifacts. So "An item shimmers into view:" ... but it's an Orc etc.
