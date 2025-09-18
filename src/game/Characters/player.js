@@ -62,7 +62,7 @@ class Player extends Character {
   takeArtifact(artifactName) {
     return takeArtifact(this, artifactName);
   }
-  putArtifact(artifactName) {
+  dropArtifact(artifactName) {
     return putArtifact(this, artifactName);
   }
 
