@@ -4,7 +4,7 @@ import lookAround from "./look/lookAround.js";
 import attackCreature from "./attack/attackCreature.js";
 import updateLocationAndPlayer from "../worldMap/updateLocationAndPlayer.js";
 import equip from "./equip/equip.js";
-import putArtifact from "./put/putArtifact.js";
+import dropArtifact from "./put/putArtifact.js";
 import gameMessages from "../gameData/gameMessages.js";
 
 /*
