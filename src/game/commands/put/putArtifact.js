@@ -1,6 +1,6 @@
 import gameMessages from "../../gameData/gameMessages.js";
 
-const putArtifact = (player, artifactName) => {
+const dropArtifact = (player, artifactName) => {
   if (!artifactName || typeof artifactName !== "string") {
     return (
       gameMessages.noArtifactSpecified ||
@@ -30,4 +30,4 @@ const putArtifact = (player, artifactName) => {
   return `You dropped ${removedArtifact.name}, but it vanished into the void...`;
 };
 
-export default putArtifact;
+export default dropArtifact;
